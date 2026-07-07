@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Монитор облигаций МКАО Воксис</title>
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">MOEX ISS</p>
+        <h1>МКАО Воксис</h1>
+      </div>
+      <div class="toolbar" aria-label="Управление отчетом">
+        <button class="icon-button" id="refreshButton" type="button" title="Обновить сейчас" aria-label="Обновить сейчас">
+          <span aria-hidden="true">↻</span>
+        </button>
+        <label class="interval">
+          <span>Дата отчета</span>
+          <input id="reportDateInput" type="date">
+        </label>
+        <label class="interval">
+          <span>История</span>
+          <select id="historyPeriodSelect">
+            <option value="30">1 мес</option>
+            <option value="90" selected>3 мес</option>
+            <option value="180">6 мес</option>
+            <option value="365">1 год</option>
+            <option value="1095">3 года</option>
+          </select>
+        </label>
+        <div class="series-toggle" aria-label="Показатели на исторических графиках">
+          <span>Графики</span>
+          <label>
+            <input id="historyPriceToggle" type="checkbox" checked>
+            <span>Курс</span>
+          </label>
+          <label>
+            <input id="historyYieldToggle" type="checkbox" checked>
+            <span>Доходность</span>
+          </label>
+        </div>
+        <label class="interval">
+          <span>Интервал</span>
+          <select id="intervalSelect">
+            <option value="15000">15 сек</option>
+            <option value="30000" selected>30 сек</option>
+            <option value="60000">1 мин</option>
+            <option value="300000">5 мин</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <section class="status-strip" aria-live="polite">
+      <div>
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Готовлю первый запрос</span>
+      </div>
+      <time id="updatedAt">-</time>
+    </section>
+
+    <section class="history-section" aria-label="Отчет по облигациям">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Отчетные строки</p>
+          <h2>Курс и доходность к погашению</h2>
+        </div>
+        <span id="historyStatus">Загружаю историю</span>
+      </div>
+      <div class="report-list" id="historyCharts"></div>
+    </section>
+
+    <section class="table-wrap" aria-label="Детальные данные">
+      <table>
+        <thead>
+          <tr>
+            <th>Бумага</th>
+            <th>Код MOEX</th>
+            <th>Цена</th>
+            <th>Изм.</th>
+            <th>Bid</th>
+            <th>Ask</th>
+            <th>Доходность</th>
+            <th>Сделок</th>
+            <th>Объем</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+
+    <footer class="footnote">
+      Данные загружаются с iss.moex.com. Исторические метрики берут ближайшую предыдущую торговую дату, если на календарную дату торгов не было.
+    </footer>
+  </main>
+
+  <script src="./moex-voksis-bond-monitor.js"></script>
+</body>
+</html>
