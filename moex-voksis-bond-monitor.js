@@ -1,5 +1,5 @@
 (function () {
-  const aliases = ["МКАОВокс01", "МКАОВокс02", "Воксис-01", "Воксис-02", "Воксис-03", "Воксис-04"];
+  const aliases = ["МКАОВокс01", "МКАОВокс02", "МКАОВокс03", "Воксис-01", "Воксис-02", "Воксис-03", "Воксис-04"];
   const apiBase = "https://iss.moex.com/iss";
   const edisclosureOptions = [
     {
@@ -258,6 +258,9 @@
 
   function getCouponInfo(info, alias, security) {
     const issueSize = Number(pick(info, ["ISSUESIZE", "ISSUESIZEPLACED"]));
+    const registeredSize = Number(pick(info, ["ISSUESIZE"]));
+    const placedValue = pick(info, ["ISSUESIZEPLACED"]);
+    const placedSize = placedValue == null || placedValue === "" ? null : Number(placedValue);
     const faceValue = Number(pick(info, ["FACEVALUE", "INITIALFACEVALUE"]));
     const couponValue = Number(pick(info, ["COUPONVALUE", "NEXTCOUPONVALUE"]));
     return {
@@ -268,6 +271,8 @@
       optionDate: getEdisclosureOptionDate(alias, security, info),
       couponPercent: pick(info, ["COUPONPERCENT"]),
       issueSize: Number.isFinite(issueSize) ? issueSize : null,
+      placedPercent: Number.isFinite(registeredSize) && registeredSize > 0 && Number.isFinite(placedSize)
+        ? placedSize / registeredSize * 100 : null,
       faceValue: Number.isFinite(faceValue) ? faceValue : null,
       issueAmount: Number.isFinite(issueSize) && Number.isFinite(faceValue) ? issueSize * faceValue : null
     };
@@ -668,6 +673,10 @@
             <div class="metric-card wide">
               <span>Сумма выпуска</span>
               <strong>${formatMillionsRub(item.issueAmount)}</strong>
+            </div>
+            <div class="metric-card wide">
+              <span>Размещено на дату отчета</span>
+              <strong>${reportDateIso === todayIso() ? formatPercent(item.placedPercent, 1) : "-"}</strong>
             </div>
             <div class="metric-card wide">
               <span>Дата погашения</span>
