@@ -39,6 +39,42 @@
   const initialCouponCache = new Map();
   let lastQuotes = [];
   let lastReportItems = [];
+  let keyRateDecisions = [];
+  let keyRateLoadedAt = 0;
+  let keyRateRequest = null;
+
+  async function loadKeyRates() {
+    if (Date.now() - keyRateLoadedAt < 60 * 60 * 1000) return;
+    if (!keyRateRequest) {
+      keyRateRequest = fetch("https://kurs-rublya.ru/api/v1/key-rates/cbr/history/?limit=100")
+        .then((response) => {
+          if (!response.ok) throw new Error(`История ключевой ставки: ${response.status}`);
+          return response.json();
+        })
+        .then((data) => {
+          keyRateDecisions = Array.isArray(data.decisions) ? data.decisions : [];
+          keyRateLoadedAt = Date.now();
+        })
+        .finally(() => { keyRateRequest = null; });
+    }
+    return keyRateRequest;
+  }
+
+  function getKeyRateOn(dateIso) {
+    const decision = keyRateDecisions
+      .filter((item) => item.effectiveDate <= dateIso)
+      .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate))[0];
+    return decision && Number.isFinite(Number(decision.ratePercent))
+      ? Number(decision.ratePercent) : null;
+  }
+
+  function getCouponTotal(item, reportDateIso) {
+    if (item.secid !== "RU000A10AC67") return item.nextCouponTotal;
+    const keyRate = getKeyRateOn(reportDateIso);
+    if (keyRate == null || item.placedSize == null || item.faceValue == null) return null;
+    const perBond = Math.round(item.faceValue * (keyRate + 7) * 30 / 365) / 100;
+    return perBond * item.placedSize;
+  }
 
   function formatNumber(value, digits = 2) {
     if (value === null || value === undefined || value === "") return "-";
@@ -616,11 +652,12 @@
   function renderQuotes(quotes) {
     lastQuotes = quotes;
     rows.innerHTML = "";
+    const currentReport = (reportDateInput.value || todayIso()) === todayIso();
 
     for (const quote of quotes) {
-      const outstandingAmount = quote.placedSize != null && quote.faceValue != null
+      const outstandingAmount = currentReport && quote.placedSize != null && quote.faceValue != null
         ? quote.placedSize * quote.faceValue : null;
-      const placedShare = quote.placedPercent != null && quote.placedPercent < 99.95
+      const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
         ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
       const redemption = getEffectiveMaturityDate({
         maturityDate: quote.maturityDate,
@@ -633,7 +670,7 @@
         <td>${couponTerms.get(quote.secid) || formatPercent(quote.initialCouponRate)}</td>
         <td>${quote.couponType || "-"}</td>
         <td>${formatDateLong(quote.nextCouponDate)}</td>
-        <td>${formatRub(quote.nextCouponTotal)}</td>
+        <td>${formatRub(getCouponTotal(quote, reportDateInput.value || todayIso()))}</td>
         <td>${formatDateLong(redemption)}</td>
         <td>${formatPercent(quote.yieldValue)}</td>
       `;
@@ -693,7 +730,7 @@
             </div>
             <div class="metric-card wide">
               <span>Ближайший купон</span>
-              <strong>${formatDateLong(item.nextCouponDate)} · ${formatRub(item.nextCouponTotal)}</strong>
+              <strong>${formatDateLong(item.nextCouponDate)} · ${formatRub(getCouponTotal(item, reportDateIso))}</strong>
             </div>
             <div class="metric-card wide">
               <span>Сумма выпуска</span>
@@ -730,6 +767,7 @@
     setStatus("", "Обновляю данные");
 
     try {
+      await loadKeyRates().catch(() => {});
       const results = await Promise.allSettled(aliases.map(loadQuote));
       const quotes = results.map((result, index) => (
         result.status === "fulfilled"
@@ -761,6 +799,8 @@
     const reportDateIso = reportDateInput.value || todayIso();
     const cacheKey = `${reportDateIso}:${days}:${aliases.join("|")}`;
     historyStatus.textContent = "Загружаю историю";
+    await loadKeyRates().catch(() => {});
+    renderQuotes(lastQuotes);
 
     if (reportCache.has(cacheKey)) {
       renderReport(reportCache.get(cacheKey), reportDateIso);
