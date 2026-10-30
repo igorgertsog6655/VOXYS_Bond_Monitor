@@ -2,6 +2,7 @@
   const aliases = ["МКАОВокс01", "МКАОВокс02", "МКАОВокс03", "Воксис-01", "Воксис-02", "Воксис-03", "Воксис-04"];
   const apiBase = "https://iss.moex.com/iss";
   const floatingCoupons = new Set(["RU000A10AC67"]);
+  const couponTerms = new Map([["RU000A10AC67", "КС + 7 п.п."]]);
   const edisclosureOptions = [
     {
       aliases: ["Воксис-01", "RU000A10AC67"],
@@ -629,7 +630,7 @@
       row.innerHTML = `
         <td>${quote.shortname || quote.alias}</td>
         <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
-        <td>${formatPercent(quote.initialCouponRate)}</td>
+        <td>${couponTerms.get(quote.secid) || formatPercent(quote.initialCouponRate)}</td>
         <td>${quote.couponType || "-"}</td>
         <td>${formatDateLong(quote.nextCouponDate)}</td>
         <td>${formatRub(quote.nextCouponTotal)}</td>
