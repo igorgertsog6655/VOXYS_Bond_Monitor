@@ -39,6 +39,7 @@
   const initialCouponCache = new Map();
   let lastQuotes = [];
   let lastReportItems = [];
+  let issuerFilter = "all";
   let keyRateDecisions = [];
   let keyRateLoadedAt = 0;
   let keyRateRequest = null;
@@ -455,6 +456,10 @@
     };
   }
 
+  function matchesIssuer(alias) {
+    return issuerFilter === "all" || (alias.startsWith("МКАОВокс") ? issuerFilter === "mkao" : issuerFilter === "ooo");
+  }
+
   function buildReportScale(items, reportDateIso, options) {
     const days = Number(historyPeriodSelect.value);
     const dateTo = parseDate(reportDateIso);
@@ -504,8 +509,8 @@
   }
 
   function drawReportChart(canvas, points, scale) {
-    const axisFont = '500 11px "IBM Plex Sans", "Segoe UI", Arial, sans-serif';
-    const axisColor = "#697984";
+    const axisFont = '500 11px "Source Sans Pro", "Segoe UI", Arial, sans-serif';
+    const axisColor = "#6d786f";
     const ratio = window.devicePixelRatio || 1;
     const width = Math.max(canvas.clientWidth, 1);
     const height = Math.max(canvas.clientHeight, 1);
@@ -549,7 +554,7 @@
       for (const value of scale.priceTicks) {
         const y = yForPrice(value);
         const isPar = value === 100;
-        ctx.strokeStyle = isPar ? "#164e4b" : "#e2e9eb";
+        ctx.strokeStyle = isPar ? "#173f2c" : "#e3e8df";
         ctx.lineWidth = isPar ? 2 : 1;
         ctx.setLineDash(isPar ? [] : [3, 4]);
         ctx.beginPath();
@@ -566,7 +571,7 @@
       for (const [index, value] of scale.yieldTicks.entries()) {
         if (index % yieldTickInterval !== 0) continue;
         const y = yForYield(value);
-        ctx.strokeStyle = "#e2e9eb";
+        ctx.strokeStyle = "#e3e8df";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 4]);
         ctx.beginPath();
@@ -586,7 +591,7 @@
       }
     }
 
-    ctx.strokeStyle = "#e8edef";
+    ctx.strokeStyle = "#ebeee7";
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 5]);
     for (const date of scale.monthTicks) {
@@ -625,12 +630,12 @@
       };
     }
 
-    const lastPrice = scale.showPrice ? drawLine(points, (point) => point.close, yForPrice, "#0e816c", 2.5) : null;
-    const lastYield = scale.showYield ? drawLine(points, (point) => point.ytm, yForYield, "#5269b2", 2) : null;
+    const lastPrice = scale.showPrice ? drawLine(points, (point) => point.close, yForPrice, "#2d7750", 2.5) : null;
+    const lastYield = scale.showYield ? drawLine(points, (point) => point.ytm, yForYield, "#ad6950", 2) : null;
 
     function labelLastPoint(label, point, offsetY) {
       if (!point) return;
-      ctx.font = '700 12px "IBM Plex Sans", "Segoe UI", Arial, sans-serif';
+      ctx.font = '700 12px "Source Sans Pro", "Segoe UI", Arial, sans-serif';
       const textWidth = ctx.measureText(label).width;
       const x = Math.min(Math.max(point.x - textWidth - 8, pad.left), width - pad.right - textWidth);
       const y = Math.max(pad.top + 2, point.y + offsetY);
@@ -658,6 +663,7 @@
     const currentReport = (reportDateInput.value || todayIso()) === todayIso();
 
     for (const quote of quotes) {
+      if (!matchesIssuer(quote.alias)) continue;
       const outstandingAmount = currentReport && quote.placedSize != null && quote.faceValue != null
         ? quote.placedSize * quote.faceValue : null;
       const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
@@ -687,7 +693,7 @@
   function renderReport(items, reportDateIso) {
     lastReportItems = items;
     historyCharts.innerHTML = "";
-    const visibleItems = items.filter((item) => (item.points || []).length);
+    const visibleItems = items.filter((item) => matchesIssuer(item.alias) && (item.points || []).length);
     const sorted = [...visibleItems].sort((a, b) => {
       const aTime = getEffectiveMaturityDate(a)?.getTime() ?? Number.POSITIVE_INFINITY;
       const bTime = getEffectiveMaturityDate(b)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -710,11 +716,14 @@
       row.innerHTML = `
         <div class="report-chart">
           <div class="card-head">
-            <div>
-              <h3 class="card-title">${item.alias}</h3>
-              <div class="chart-legend">
-                ${chartOptions.showPrice ? '<span class="legend-item"><span class="legend-swatch"></span>Курс закрытия</span>' : ""}
-                ${chartOptions.showYield ? '<span class="legend-item"><span class="legend-swatch yield"></span>Доходность к погашению</span>' : ""}
+            <div class="issue-identity">
+              <span class="issue-badge" aria-hidden="true"><i data-lucide="${item.alias.startsWith("МКАОВокс") ? "landmark" : "building-2"}"></i></span>
+              <div>
+                <h3 class="card-title">${item.alias}</h3>
+                <div class="chart-legend">
+                  ${chartOptions.showPrice ? '<span class="legend-item"><span class="legend-swatch"></span>Курс закрытия</span>' : ""}
+                  ${chartOptions.showYield ? '<span class="legend-item"><span class="legend-swatch yield"></span>Доходность к погашению</span>' : ""}
+                </div>
               </div>
             </div>
             <span class="secid">${item.secid || "-"}</span>
@@ -725,29 +734,29 @@
           <h4 class="metrics-title">Метрики</h4>
           <div class="metric-grid">
             <div class="metric-card">
-              <span>Курс на ${formatDateLong(metrics.yesterday?.date)}</span>
+              <span class="metric-label"><i data-lucide="trending-up" aria-hidden="true"></i>Курс на ${formatDateLong(metrics.yesterday?.date)}</span>
               <strong>${formatNumber(metrics.yesterday?.close)} <span class="metric-previous">(${formatNumber(metrics.weekAgo?.close)})</span></strong>
               <em class="metric-change ${priceClass}">${formatSignedPercent(priceChange)} к ${formatDateLong(metrics.weekAgoTarget)}</em>
             </div>
             <div class="metric-card">
-              <span>Доходность на ${formatDateLong(metrics.yesterday?.date)}</span>
+              <span class="metric-label"><i data-lucide="percent" aria-hidden="true"></i>Доходность на ${formatDateLong(metrics.yesterday?.date)}</span>
               <strong>${formatPercent(metrics.yesterday?.ytm)} <span class="metric-previous">(${formatPercent(metrics.weekAgo?.ytm)})</span></strong>
               <em class="metric-change ${yieldClass}">${formatSignedPercent(yieldChange)} к ${formatDateLong(metrics.weekAgoTarget)}</em>
             </div>
             <div class="metric-card wide">
-              <span>Ближайший купон</span>
+              <span class="metric-label"><i data-lucide="calendar-days" aria-hidden="true"></i>Ближайший купон</span>
               <strong>${formatDateLong(item.nextCouponDate)} · ${formatRub(getCouponTotal(item, reportDateIso))}</strong>
             </div>
             <div class="metric-card wide">
-              <span>Сумма выпуска</span>
+              <span class="metric-label"><i data-lucide="wallet" aria-hidden="true"></i>Сумма выпуска</span>
               <strong>${formatMillionsRub(item.issueAmount)}</strong>
             </div>
             <div class="metric-card wide">
-              <span>Размещено на дату отчета</span>
+              <span class="metric-label"><i data-lucide="pie-chart" aria-hidden="true"></i>Размещено на дату отчета</span>
               <strong>${reportDateIso === todayIso() ? formatPercent(item.placedPercent, 1) : "-"}</strong>
             </div>
             <div class="metric-card wide">
-              <span>Дата погашения</span>
+              <span class="metric-label"><i data-lucide="calendar-check" aria-hidden="true"></i>Дата погашения</span>
               <strong>${formatMaturityWithOption(item.maturityDate, item.optionDate)}</strong>
             </div>
           </div>
@@ -760,6 +769,7 @@
     for (const item of pendingCharts) {
       drawReportChart(item.canvas, item.points, scale);
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   function setStatus(type, text) {
@@ -841,6 +851,17 @@
   }
 
   reportDateInput.value = todayIso();
+  document.querySelectorAll(".issuer-tabs [data-issuer]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      issuerFilter = tab.dataset.issuer;
+      document.querySelectorAll(".issuer-tabs [data-issuer]").forEach((item) => {
+        item.setAttribute("aria-selected", String(item === tab));
+      });
+      renderQuotes(lastQuotes);
+      renderReport(lastReportItems, reportDateInput.value || todayIso());
+    });
+  });
+  if (window.lucide) window.lucide.createIcons();
   refreshButton.addEventListener("click", refreshAll);
   intervalSelect.addEventListener("change", restartTimer);
   historyPeriodSelect.addEventListener("change", refreshReport);

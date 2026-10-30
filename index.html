@@ -6,8 +6,8 @@
   <title>Облигации Воксис | Монитор MOEX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261030-design">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Source+Sans+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261030-plant2">
 </head>
 <body>
   <main class="app">
@@ -18,7 +18,7 @@
       </div>
       <div class="toolbar" aria-label="Управление отчетом">
         <button class="icon-button" id="refreshButton" type="button" title="Обновить сейчас" aria-label="Обновить сейчас">
-          <span aria-hidden="true">↻</span>
+          <i data-lucide="refresh-cw" aria-hidden="true"></i>
         </button>
         <label class="interval">
           <span>Дата отчета</span>
@@ -73,6 +73,11 @@
         </div>
         <span id="historyStatus">Загружаю историю</span>
       </div>
+      <div class="issuer-tabs" role="tablist" aria-label="Эмитент">
+        <button type="button" role="tab" data-issuer="all" aria-selected="true">Все выпуски</button>
+        <button type="button" role="tab" data-issuer="mkao" aria-selected="false">МКАО Воксис</button>
+        <button type="button" role="tab" data-issuer="ooo" aria-selected="false">ООО Воксис</button>
+      </div>
       <div class="report-list" id="historyCharts"></div>
     </section>
 
@@ -107,6 +112,7 @@
     </footer>
   </main>
 
-  <script src="./moex-voksis-bond-monitor.js?v=20261030-design"></script>
+  <script src="https://unpkg.com/lucide@1.18.0/dist/umd/lucide.min.js" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261030-plant2" defer></script>
 </body>
 </html>
