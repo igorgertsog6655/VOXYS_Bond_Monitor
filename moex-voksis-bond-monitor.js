@@ -663,6 +663,9 @@
         maturityDate: quote.maturityDate,
         optionDate: parseDate(quote.optionDate) > parseDate(todayIso()) ? quote.optionDate : null
       });
+      const redemptionType = redemption && parseDate(quote.optionDate)?.getTime() === redemption.getTime()
+        ? "О" : "П";
+      const redemptionLabel = redemption ? `${formatDateLong(redemption)} (${redemptionType})` : "-";
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${quote.shortname || quote.alias}</td>
@@ -671,7 +674,7 @@
         <td>${quote.couponType || "-"}</td>
         <td>${formatDateLong(quote.nextCouponDate)}</td>
         <td>${formatRub(getCouponTotal(quote, reportDateInput.value || todayIso()))}</td>
-        <td>${formatDateLong(redemption)}</td>
+        <td>${redemptionLabel}</td>
         <td>${formatPercent(quote.yieldValue)}</td>
       `;
       rows.appendChild(row);
