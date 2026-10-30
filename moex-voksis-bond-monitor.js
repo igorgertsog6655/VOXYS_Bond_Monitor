@@ -1,5 +1,11 @@
 (function () {
   const aliases = ["МКАОВокс01", "МКАОВокс02", "МКАОВокс03", "Воксис-01", "Воксис-02", "Воксис-03", "Воксис-04"];
+  const knownSecids = new Map([
+    ["МКАОВокс01", "RU000A10DCE0"], ["МКАОВокс02", "RU000A10E9Z7"],
+    ["МКАОВокс03", "RU000A10GFW8"], ["Воксис-01", "RU000A10AC67"],
+    ["Воксис-02", "RU000A10B222"], ["Воксис-03", "RU000A10BW39"],
+    ["Воксис-04", "RU000A10C8K3"]
+  ]);
   const apiBase = "https://iss.moex.com/iss";
   const floatingCoupons = new Set(["RU000A10AC67"]);
   const couponTerms = new Map([["RU000A10AC67", "КС + 7 п.п."]]);
@@ -46,6 +52,23 @@
   let keyRateLoadedAt = 0;
   let keyRateRequest = null;
   let reportRequestId = 0;
+  let quoteRequest = null;
+
+  function readSaved(key) {
+    try {
+      return JSON.parse(localStorage.getItem(`voxys-monitor:${key}`));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveData(key, data) {
+    try {
+      localStorage.setItem(`voxys-monitor:${key}`, JSON.stringify({ savedAt: Date.now(), data }));
+    } catch (_) {
+      // Private browsing or a full storage quota must not block live data.
+    }
+  }
 
   async function loadKeyRates() {
     if (Date.now() - keyRateLoadedAt < 60 * 60 * 1000) return;
@@ -58,6 +81,7 @@
         .then((data) => {
           keyRateDecisions = Array.isArray(data.decisions) ? data.decisions : [];
           keyRateLoadedAt = Date.now();
+          saveData("key-rates", keyRateDecisions);
         })
         .finally(() => { keyRateRequest = null; });
     }
@@ -234,37 +258,41 @@
   }
 
   async function getJson(url) {
-    const response = await fetch(url, { cache: "no-store" });
+    const signal = typeof AbortSignal !== "undefined" && AbortSignal.timeout
+      ? AbortSignal.timeout(15000) : undefined;
+    const response = await fetch(url, { cache: url.includes("/history/") ? "default" : "no-store", signal });
     if (!response.ok) throw new Error(`MOEX вернул ${response.status}`);
     return response.json();
   }
 
   async function getPagedRows(url, blockName) {
-    const rows = [];
-    let start = 0;
-    let total = Infinity;
-    let pageSize = 100;
+    const join = url.includes("?") ? "&" : "?";
+    const first = await getJson(`${url}${join}start=0`);
+    const rows = blockToRows(first[blockName]);
+    const cursor = blockToRows(first[`${blockName}.cursor`])[0];
+    if (!cursor || !rows.length) return rows;
 
-    while (rows.length < total) {
-      const join = url.includes("?") ? "&" : "?";
-      const json = await getJson(`${url}${join}start=${start}`);
-      const chunk = blockToRows(json[blockName]);
-      rows.push(...chunk);
-
-      const cursor = blockToRows(json[`${blockName}.cursor`])[0];
-      if (!cursor) break;
-
-      total = Number(pick(cursor, ["TOTAL"])) || rows.length;
-      pageSize = Number(pick(cursor, ["PAGESIZE"])) || chunk.length || pageSize;
-      if (!chunk.length) break;
-      start += pageSize;
+    const total = Number(pick(cursor, ["TOTAL"])) || rows.length;
+    const pageSize = Number(pick(cursor, ["PAGESIZE"])) || rows.length;
+    const starts = [];
+    for (let start = pageSize; start < total; start += pageSize) starts.push(start);
+    for (let i = 0; i < starts.length; i += 4) {
+      const pages = await Promise.all(starts.slice(i, i + 4).map(async (start) => {
+        const json = await getJson(`${url}${join}start=${start}`);
+        return blockToRows(json[blockName]);
+      }));
+      for (const page of pages) rows.push(...page);
     }
-
     return rows;
   }
 
   async function resolveAlias(alias) {
     if (resolved.has(alias)) return resolved.get(alias);
+    if (knownSecids.has(alias)) {
+      const result = { alias, secid: knownSecids.get(alias), shortname: alias, primaryBoard: "" };
+      resolved.set(alias, result);
+      return result;
+    }
     const request = (async () => {
       const url = `${apiBase}/securities.json?q=${encodeURIComponent(alias)}&iss.meta=off`;
       const json = await getJson(url);
@@ -293,7 +321,8 @@
   }
 
   async function loadSecuritySnapshot(security) {
-    if (snapshotRequests.has(security.secid)) return snapshotRequests.get(security.secid);
+    const cached = snapshotRequests.get(security.secid);
+    if (cached && cached.expiresAt > Date.now()) return cached.request;
     const url = `${apiBase}/engines/stock/markets/bonds/securities/${encodeURIComponent(security.secid)}.json?iss.meta=off&iss.only=securities,marketdata`;
     const request = getJson(url).then((json) => {
       const securityRows = blockToRows(json.securities);
@@ -301,8 +330,11 @@
       const market = marketRows.find((item) => item.LAST || item.BID || item.OFFER || item.LCURRENTPRICE) || marketRows[0] || {};
       const info = securityRows.find((item) => item.BOARDID === market.BOARDID) || securityRows[0] || {};
       return { info, market };
-    }).finally(() => snapshotRequests.delete(security.secid));
-    snapshotRequests.set(security.secid, request);
+    }).catch((error) => {
+      snapshotRequests.delete(security.secid);
+      throw error;
+    });
+    snapshotRequests.set(security.secid, { request, expiresAt: Date.now() + 20000 });
     return request;
   }
 
@@ -330,6 +362,7 @@
   }
 
   async function loadInitialCouponRate(secid) {
+    if (initialCouponRates.has(secid)) return initialCouponRates.get(secid);
     if (!initialCouponCache.has(secid)) {
       const url = `${apiBase}/statistics/engines/stock/markets/bonds/bondization/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=coupons&start=0&limit=1`;
       const request = getJson(url).then((json) => {
@@ -337,6 +370,7 @@
         const rate = pick(first, ["valueprc", "VALUEPRC"]);
         if (rate != null) {
           initialCouponRates.set(secid, rate);
+          saveData("initial-coupons", Object.fromEntries(initialCouponRates));
           if (lastQuotes.length) renderQuotes(lastQuotes);
         }
         return rate;
@@ -382,31 +416,28 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, points: [], error: "Бумага не найдена в поиске MOEX" };
 
-    const infoRequest = loadSecuritySnapshot(security);
+    const infoRequest = loadSecuritySnapshot(security).then(
+      (snapshot) => ({ snapshot }), (error) => ({ error })
+    );
     const reportDate = parseDate(reportDateIso);
     const fromDate = addDays(reportDate, -Number(days));
     const fromIso = toIsoDate(fromDate);
-    const params = `from=${fromIso}&till=${reportDateIso}&iss.meta=off`;
-    const urls = [];
-
-    if (security.primaryBoard) {
-      urls.push(`${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(security.primaryBoard)}/securities/${encodeURIComponent(security.secid)}.json?${params}`);
-    }
-    urls.push(`${apiBase}/history/engines/stock/markets/bonds/securities/${encodeURIComponent(security.secid)}.json?${params}`);
+    const params = `from=${fromIso}&till=${reportDateIso}&iss.meta=off&iss.only=history,history.cursor`;
+    const url = `${apiBase}/history/engines/stock/markets/bonds/securities/${encodeURIComponent(security.secid)}.json?${params}`;
 
     let historyRows = [];
     let lastError = null;
-    for (const url of urls) {
-      try {
-        historyRows = await getPagedRows(url, "history");
-        if (historyRows.length) break;
-      } catch (error) {
-        lastError = error;
-      }
+    try {
+      historyRows = await getPagedRows(url, "history");
+    } catch (error) {
+      lastError = error;
     }
 
-    const points = historyRows
-      .map((item) => ({
+    if (lastError) throw lastError;
+    const infoResult = await infoRequest;
+    if (infoResult.error) throw infoResult.error;
+    const { info } = infoResult.snapshot;
+    const toPoints = (rows) => rows.map((item) => ({
         date: pick(item, ["TRADEDATE"]),
         close: Number(pick(item, ["CLOSE", "LEGALCLOSEPRICE", "WAPRICE", "MARKETPRICE2", "PRICE"])),
         ytm: Number(pick(item, ["YIELDCLOSE", "YIELDATWAP", "YIELD", "YIELDTOMATURITY", "EFFECTIVEYIELD"])),
@@ -414,7 +445,16 @@
       }))
       .filter((item) => item.date && Number.isFinite(item.close))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
-    const { info } = await infoRequest;
+    let points = toPoints(historyRows);
+    if (!points.length && !lastError && info.BOARDID) {
+      const boardUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(info.BOARDID)}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
+      try {
+        points = toPoints(await getPagedRows(boardUrl, "history"));
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError && !points.length) throw lastError;
 
     return {
       alias,
@@ -793,9 +833,21 @@
   }
 
   async function refreshQuotes() {
+    if (quoteRequest) return quoteRequest;
+    quoteRequest = updateQuotes();
+    try {
+      return await quoteRequest;
+    } finally {
+      quoteRequest = null;
+    }
+  }
+
+  async function updateQuotes() {
     refreshButton.classList.add("loading");
     refreshButton.disabled = true;
-    setStatus("", "Обновляю данные");
+    setStatus("", lastQuotes.length
+      ? `Показаны данные от ${updatedAt.textContent} · проверяю обновления`
+      : "Обновляю данные");
     if (!keyRateRequest && Date.now() - keyRateLoadedAt >= 60 * 60 * 1000) {
       loadKeyRates().then(() => {
         if (lastQuotes.length) renderQuotes(lastQuotes);
@@ -808,20 +860,19 @@
       const quotes = results.map((result, index) => (
         result.status === "fulfilled"
           ? result.value
-          : { alias: aliases[index], secid: aliases[index], error: result.reason.message }
+          : lastQuotes.find((quote) => quote.alias === aliases[index])
+            || { alias: aliases[index], secid: knownSecids.get(aliases[index]) || aliases[index], error: result.reason.message }
       ));
       renderQuotes(quotes);
 
-      const failures = quotes.filter((quote) => quote.error);
-      setStatus(failures.length ? "bad" : "ok", failures.length ? failures.map((quote) => `${quote.alias}: ${quote.error}`).join("; ") : "Данные обновлены");
-      updatedAt.textContent = new Intl.DateTimeFormat("ru-RU", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
-      }).format(new Date());
+      const failures = results.filter((result) => result.status === "rejected").length;
+      setStatus(failures ? "bad" : "ok", failures
+        ? `MOEX: не обновлено выпусков ${failures} из ${aliases.length}${lastQuotes.some((quote) => !quote.error) ? "; показаны последние доступные данные" : "; сохранённых данных нет"}`
+        : "Данные обновлены");
+      if (!failures) {
+        saveData("quotes", quotes);
+        updatedAt.textContent = formatDateTime(Date.now());
+      }
     } catch (error) {
       setStatus("bad", error.message || "Не удалось обновить данные");
     } finally {
@@ -835,7 +886,11 @@
     const days = historyPeriodSelect.value;
     const reportDateIso = reportDateInput.value || todayIso();
     const cacheKey = `${reportDateIso}:${days}:${aliases.join("|")}`;
-    historyStatus.textContent = "Загружаю историю";
+    const saved = readSaved(`report:${cacheKey}`);
+    const savedItems = Array.isArray(saved?.data) ? saved.data : null;
+    historyStatus.textContent = savedItems
+      ? `Сохранённый отчёт от ${formatDateTime(saved.savedAt)} · проверяю обновления`
+      : "Загружаю историю";
     renderQuotes(lastQuotes);
 
     if (reportCache.has(cacheKey)) {
@@ -844,19 +899,37 @@
       return;
     }
 
+    if (savedItems) renderReport(savedItems, reportDateIso);
+    else {
+      historyCharts.innerHTML = "";
+      lastReportItems = [];
+    }
+
     const results = await Promise.allSettled(aliases.map((alias) => loadBondReport(alias, reportDateIso, days)));
     if (requestId !== reportRequestId) return;
-    const items = results.map((result, index) => (
-      result.status === "fulfilled"
-        ? result.value
-        : { alias: aliases[index], secid: aliases[index], points: [], error: result.reason.message }
-    ));
-
-    reportCache.set(cacheKey, items);
+    let failures = 0;
+    const items = results.map((result, index) => {
+      const savedItem = savedItems?.find((item) => item.alias === aliases[index]);
+      if (result.status === "rejected") {
+        failures++;
+        return savedItem || { alias: aliases[index], secid: knownSecids.get(aliases[index]) || aliases[index], points: [], error: result.reason.message };
+      }
+      if (!result.value.points.length && savedItem?.points?.length) {
+        failures++;
+        return savedItem;
+      }
+      return result.value;
+    });
+    if (!failures) {
+      reportCache.set(cacheKey, items);
+      saveData(`report:${cacheKey}`, items);
+    }
     renderReport(items, reportDateIso);
 
     const visibleCount = items.filter((item) => (item.points || []).length).length;
-    historyStatus.textContent = visibleCount
+    historyStatus.textContent = failures
+      ? `MOEX: не обновлено выпусков ${failures} из ${aliases.length}${savedItems ? "; показаны сохранённые данные" : "; сохранённых данных нет"}`
+      : visibleCount
       ? `Отчет на ${formatDateLong(reportDateIso)} · период: ${historyPeriodSelect.selectedOptions[0].textContent}`
       : "Нет данных для выбранного периода";
   }
@@ -871,7 +944,29 @@
     refreshTimer = window.setInterval(refreshQuotes, Number(intervalSelect.value));
   }
 
+  function formatDateTime(value) {
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    }).format(new Date(value));
+  }
+
   reportDateInput.value = todayIso();
+  const savedKeyRates = readSaved("key-rates");
+  if (Array.isArray(savedKeyRates?.data) && Date.now() - savedKeyRates.savedAt < 60 * 60 * 1000) {
+    keyRateDecisions = savedKeyRates.data;
+    keyRateLoadedAt = savedKeyRates.savedAt;
+  }
+  const savedCouponRates = readSaved("initial-coupons")?.data;
+  if (savedCouponRates && typeof savedCouponRates === "object") {
+    for (const [secid, rate] of Object.entries(savedCouponRates)) initialCouponRates.set(secid, rate);
+  }
+  const savedQuotes = readSaved("quotes");
+  if (Array.isArray(savedQuotes?.data)) {
+    renderQuotes(savedQuotes.data);
+    setStatus("", `Сохранённые данные от ${formatDateTime(savedQuotes.savedAt)}`);
+    updatedAt.textContent = formatDateTime(savedQuotes.savedAt);
+  }
   document.querySelectorAll(".issuer-tabs [data-issuer]").forEach((tab) => {
     tab.addEventListener("click", () => {
       issuerFilter = tab.dataset.issuer;
