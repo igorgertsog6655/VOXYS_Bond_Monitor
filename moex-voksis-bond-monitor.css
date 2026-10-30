@@ -196,7 +196,7 @@ input[type="date"] {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  min-width: 1080px;
 }
 
 th,
@@ -209,9 +209,15 @@ td {
 
 th:first-child,
 td:first-child,
-th:nth-child(2),
-td:nth-child(2) {
+th:nth-child(3),
+td:nth-child(3) {
   text-align: left;
+}
+
+.volume-share {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 th {

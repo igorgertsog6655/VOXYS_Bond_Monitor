@@ -1,6 +1,7 @@
 (function () {
   const aliases = ["МКАОВокс01", "МКАОВокс02", "МКАОВокс03", "Воксис-01", "Воксис-02", "Воксис-03", "Воксис-04"];
   const apiBase = "https://iss.moex.com/iss";
+  const floatingCoupons = new Set(["RU000A10AC67"]);
   const edisclosureOptions = [
     {
       aliases: ["Воксис-01", "RU000A10AC67"],
@@ -34,6 +35,7 @@
   let refreshTimer = 0;
   let resolved = new Map();
   let reportCache = new Map();
+  const initialCouponCache = new Map();
   let lastQuotes = [];
   let lastReportItems = [];
 
@@ -266,11 +268,12 @@
     return {
       nextCouponDate: pick(info, ["NEXTCOUPON", "COUPONDATE", "NEXTCOUPONDATE"]),
       nextCouponValue: Number.isFinite(couponValue) ? couponValue : null,
-      nextCouponTotal: Number.isFinite(couponValue) && Number.isFinite(issueSize) ? couponValue * issueSize : null,
+      nextCouponTotal: Number.isFinite(couponValue) && Number.isFinite(placedSize) ? couponValue * placedSize : null,
       maturityDate: pick(info, ["MATDATE", "MATURITYDATE"]),
       optionDate: getEdisclosureOptionDate(alias, security, info),
       couponPercent: pick(info, ["COUPONPERCENT"]),
       issueSize: Number.isFinite(issueSize) ? issueSize : null,
+      placedSize: Number.isFinite(placedSize) ? placedSize : null,
       placedPercent: Number.isFinite(registeredSize) && registeredSize > 0 && Number.isFinite(placedSize)
         ? placedSize / registeredSize * 100 : null,
       faceValue: Number.isFinite(faceValue) ? faceValue : null,
@@ -278,14 +281,28 @@
     };
   }
 
+  async function loadInitialCouponRate(secid) {
+    if (!initialCouponCache.has(secid)) {
+      const url = `${apiBase}/statistics/engines/stock/markets/bonds/bondization/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=coupons&start=0&limit=1`;
+      const request = getJson(url).then((json) => {
+        const first = blockToRows(json.coupons)[0];
+        return pick(first, ["valueprc", "VALUEPRC"]);
+      }).catch(() => null);
+      initialCouponCache.set(secid, request);
+    }
+    return initialCouponCache.get(secid);
+  }
+
   async function loadQuote(alias) {
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, error: "Бумага не найдена в поиске MOEX" };
 
-    const { info, market } = await loadSecuritySnapshot(security);
+    const [{ info, market }, initialCouponRate] = await Promise.all([
+      loadSecuritySnapshot(security), loadInitialCouponRate(security.secid)
+    ]);
     const last = pick(market, ["LAST", "LCURRENTPRICE", "MARKETPRICE", "WAPRICE", "LEGALCLOSEPRICE", "PREVPRICE"]);
     const change = pick(market, ["LASTCHANGEPRCNT", "CHANGE"]);
-    const yieldValue = pick(market, ["YIELD", "YIELDATWAPRICE", "YIELDTOOFFER", "YIELDTOMATURITY", "YIELDLASTCOUPON"]);
+    const yieldValue = pick(market, ["YIELD"]);
     const bid = pick(market, ["BID", "BUYBACKPRICE"]);
     const ask = pick(market, ["OFFER", "SELLBACKPRICE"]);
     const trades = pick(market, ["NUMTRADES", "TRADINGSESSION"]);
@@ -301,6 +318,8 @@
       bid,
       ask,
       yieldValue,
+      initialCouponRate: initialCouponRate ?? (floatingCoupons.has(security.secid) ? null : pick(info, ["COUPONPERCENT"])),
+      couponType: floatingCoupons.has(security.secid) ? "Флоатер" : "Фикс",
       trades,
       value,
       ...getCouponInfo(info, alias, security)
@@ -598,19 +617,24 @@
     rows.innerHTML = "";
 
     for (const quote of quotes) {
-      const changeNumber = Number(quote.change);
-      const stateClass = Number.isFinite(changeNumber) && changeNumber < 0 ? "negative" : "positive";
+      const outstandingAmount = quote.placedSize != null && quote.faceValue != null
+        ? quote.placedSize * quote.faceValue : null;
+      const placedShare = quote.placedPercent != null && quote.placedPercent < 99.95
+        ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
+      const redemption = getEffectiveMaturityDate({
+        maturityDate: quote.maturityDate,
+        optionDate: parseDate(quote.optionDate) > parseDate(todayIso()) ? quote.optionDate : null
+      });
       const row = document.createElement("tr");
       row.innerHTML = `
         <td>${quote.shortname || quote.alias}</td>
-        <td>${quote.secid || "-"}</td>
-        <td>${formatNumber(quote.last)}</td>
-        <td class="${stateClass}">${quote.change == null ? "-" : `${formatNumber(changeNumber)}%`}</td>
-        <td>${formatNumber(quote.bid)}</td>
-        <td>${formatNumber(quote.ask)}</td>
-        <td>${quote.yieldValue == null ? "-" : `${formatNumber(quote.yieldValue)}%`}</td>
-        <td>${formatNumber(quote.trades, 0)}</td>
-        <td>${formatCompact(quote.value)}</td>
+        <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
+        <td>${formatPercent(quote.initialCouponRate)}</td>
+        <td>${quote.couponType || "-"}</td>
+        <td>${formatDateLong(quote.nextCouponDate)}</td>
+        <td>${formatRub(quote.nextCouponTotal)}</td>
+        <td>${formatDateLong(redemption)}</td>
+        <td>${formatPercent(quote.yieldValue)}</td>
       `;
       rows.appendChild(row);
     }
