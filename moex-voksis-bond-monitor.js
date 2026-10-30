@@ -504,8 +504,8 @@
   }
 
   function drawReportChart(canvas, points, scale) {
-    const axisFont = '400 12px "Segoe UI", Arial, sans-serif';
-    const axisColor = "#657180";
+    const axisFont = '500 11px "IBM Plex Sans", "Segoe UI", Arial, sans-serif';
+    const axisColor = "#697984";
     const ratio = window.devicePixelRatio || 1;
     const width = Math.max(canvas.clientWidth, 1);
     const height = Math.max(canvas.clientHeight, 1);
@@ -532,6 +532,7 @@
 
     const plotW = width - pad.left - pad.right;
     const plotH = height - pad.top - pad.bottom;
+    const yieldTickInterval = Math.max(1, Math.ceil(scale.yieldTicks.length / Math.max(1, Math.floor(plotH / 23))));
     const dateSpan = scale.dateTo.getTime() - scale.dateFrom.getTime() || 1;
     const xForDate = (value) => {
       const date = parseDate(value);
@@ -548,7 +549,7 @@
       for (const value of scale.priceTicks) {
         const y = yForPrice(value);
         const isPar = value === 100;
-        ctx.strokeStyle = isPar ? "#0d5258" : "#d9e0e8";
+        ctx.strokeStyle = isPar ? "#164e4b" : "#e2e9eb";
         ctx.lineWidth = isPar ? 2 : 1;
         ctx.setLineDash(isPar ? [] : [3, 4]);
         ctx.beginPath();
@@ -562,9 +563,10 @@
     }
 
     if (!scale.showPrice && scale.showYield) {
-      for (const value of scale.yieldTicks) {
+      for (const [index, value] of scale.yieldTicks.entries()) {
+        if (index % yieldTickInterval !== 0) continue;
         const y = yForYield(value);
-        ctx.strokeStyle = "#d9e0e8";
+        ctx.strokeStyle = "#e2e9eb";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 4]);
         ctx.beginPath();
@@ -578,12 +580,13 @@
     if (scale.showYield) {
       ctx.textAlign = "left";
       ctx.fillStyle = axisColor;
-      for (const value of scale.yieldTicks) {
+      for (const [index, value] of scale.yieldTicks.entries()) {
+        if (index % yieldTickInterval !== 0) continue;
         ctx.fillText(formatPercent(value, 0), width - pad.right + 8, yForYield(value));
       }
     }
 
-    ctx.strokeStyle = "#edf1f5";
+    ctx.strokeStyle = "#e8edef";
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 5]);
     for (const date of scale.monthTicks) {
@@ -622,12 +625,12 @@
       };
     }
 
-    const lastPrice = scale.showPrice ? drawLine(points, (point) => point.close, yForPrice, "#28794b", 2.5) : null;
-    const lastYield = scale.showYield ? drawLine(points, (point) => point.ytm, yForYield, "#7a4fb3", 2) : null;
+    const lastPrice = scale.showPrice ? drawLine(points, (point) => point.close, yForPrice, "#0e816c", 2.5) : null;
+    const lastYield = scale.showYield ? drawLine(points, (point) => point.ytm, yForYield, "#5269b2", 2) : null;
 
     function labelLastPoint(label, point, offsetY) {
       if (!point) return;
-      ctx.font = '700 12px "Segoe UI", Arial, sans-serif';
+      ctx.font = '700 12px "IBM Plex Sans", "Segoe UI", Arial, sans-serif';
       const textWidth = ctx.measureText(label).width;
       const x = Math.min(Math.max(point.x - textWidth - 8, pad.left), width - pad.right - textWidth);
       const y = Math.max(pad.top + 2, point.y + offsetY);

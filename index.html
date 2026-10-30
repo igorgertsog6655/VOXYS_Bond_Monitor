@@ -3,15 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Монитор облигаций МКАО Воксис</title>
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css">
+  <title>Облигации Воксис | Монитор MOEX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261030-design">
 </head>
 <body>
   <main class="app">
     <header class="topbar">
       <div>
-        <p class="eyebrow">MOEX ISS</p>
-        <h1>МКАО Воксис</h1>
+        <p class="eyebrow">Облигации / MOEX ISS</p>
+        <h1>Воксис</h1>
       </div>
       <div class="toolbar" aria-label="Управление отчетом">
         <button class="icon-button" id="refreshButton" type="button" title="Обновить сейчас" aria-label="Обновить сейчас">
@@ -73,8 +76,15 @@
       <div class="report-list" id="historyCharts"></div>
     </section>
 
-    <section class="table-wrap" aria-label="Детальные данные">
-      <table>
+    <section class="table-section" aria-label="Детальные данные">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Сводка</p>
+          <h2>Параметры выпусков</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
         <thead>
           <tr>
             <th>Бумага</th>
@@ -88,7 +98,8 @@
           </tr>
         </thead>
         <tbody id="rows"></tbody>
-      </table>
+        </table>
+      </div>
     </section>
 
     <footer class="footnote">
@@ -96,6 +107,6 @@
     </footer>
   </main>
 
-  <script src="./moex-voksis-bond-monitor.js?v=20261030b"></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261030-design"></script>
 </body>
 </html>
