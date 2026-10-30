@@ -35,14 +35,17 @@
 
   let refreshTimer = 0;
   let resolved = new Map();
+  const snapshotRequests = new Map();
   let reportCache = new Map();
   const initialCouponCache = new Map();
+  const initialCouponRates = new Map();
   let lastQuotes = [];
   let lastReportItems = [];
   let issuerFilter = "all";
   let keyRateDecisions = [];
   let keyRateLoadedAt = 0;
   let keyRateRequest = null;
+  let reportRequestId = 0;
 
   async function loadKeyRates() {
     if (Date.now() - keyRateLoadedAt < 60 * 60 * 1000) return;
@@ -262,38 +265,45 @@
 
   async function resolveAlias(alias) {
     if (resolved.has(alias)) return resolved.get(alias);
+    const request = (async () => {
+      const url = `${apiBase}/securities.json?q=${encodeURIComponent(alias)}&iss.meta=off`;
+      const json = await getJson(url);
+      const matches = blockToRows(json.securities);
+      const found = matches
+        .filter((item) => String(item.type || "").toLowerCase().includes("bond") || String(item.group || "").toLowerCase().includes("bond") || item.is_traded === 1)
+        .find((item) => [item.secid, item.shortname, item.name, item.secname].some((value) => String(value || "").toLowerCase() === alias.toLowerCase()))
+        || matches[0];
 
-    const url = `${apiBase}/securities.json?q=${encodeURIComponent(alias)}&iss.meta=off`;
-    const json = await getJson(url);
-    const found = blockToRows(json.securities)
-      .filter((item) => String(item.type || "").toLowerCase().includes("bond") || String(item.group || "").toLowerCase().includes("bond") || item.is_traded === 1)
-      .find((item) => [item.secid, item.shortname, item.name, item.secname].some((value) => String(value || "").toLowerCase() === alias.toLowerCase()))
-      || blockToRows(json.securities)[0];
-
-    if (!found) {
-      const fallback = { alias, secid: alias, shortname: alias, missing: true };
-      resolved.set(alias, fallback);
-      return fallback;
+      return found ? {
+        alias,
+        secid: found.secid || alias,
+        shortname: found.shortname || found.name || alias,
+        primaryBoard: found.primary_boardid || found.boardid || ""
+      } : { alias, secid: alias, shortname: alias, missing: true };
+    })();
+    resolved.set(alias, request);
+    try {
+      const result = await request;
+      resolved.set(alias, result);
+      return result;
+    } catch (error) {
+      resolved.delete(alias);
+      throw error;
     }
-
-    const result = {
-      alias,
-      secid: found.secid || alias,
-      shortname: found.shortname || found.name || alias,
-      primaryBoard: found.primary_boardid || found.boardid || ""
-    };
-    resolved.set(alias, result);
-    return result;
   }
 
   async function loadSecuritySnapshot(security) {
+    if (snapshotRequests.has(security.secid)) return snapshotRequests.get(security.secid);
     const url = `${apiBase}/engines/stock/markets/bonds/securities/${encodeURIComponent(security.secid)}.json?iss.meta=off&iss.only=securities,marketdata`;
-    const json = await getJson(url);
-    const securityRows = blockToRows(json.securities);
-    const marketRows = blockToRows(json.marketdata);
-    const market = marketRows.find((item) => item.LAST || item.BID || item.OFFER || item.LCURRENTPRICE) || marketRows[0] || {};
-    const info = securityRows.find((item) => item.BOARDID === market.BOARDID) || securityRows[0] || {};
-    return { info, market };
+    const request = getJson(url).then((json) => {
+      const securityRows = blockToRows(json.securities);
+      const marketRows = blockToRows(json.marketdata);
+      const market = marketRows.find((item) => item.LAST || item.BID || item.OFFER || item.LCURRENTPRICE) || marketRows[0] || {};
+      const info = securityRows.find((item) => item.BOARDID === market.BOARDID) || securityRows[0] || {};
+      return { info, market };
+    }).finally(() => snapshotRequests.delete(security.secid));
+    snapshotRequests.set(security.secid, request);
+    return request;
   }
 
   function getCouponInfo(info, alias, security) {
@@ -324,7 +334,12 @@
       const url = `${apiBase}/statistics/engines/stock/markets/bonds/bondization/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=coupons&start=0&limit=1`;
       const request = getJson(url).then((json) => {
         const first = blockToRows(json.coupons)[0];
-        return pick(first, ["valueprc", "VALUEPRC"]);
+        const rate = pick(first, ["valueprc", "VALUEPRC"]);
+        if (rate != null) {
+          initialCouponRates.set(secid, rate);
+          if (lastQuotes.length) renderQuotes(lastQuotes);
+        }
+        return rate;
       }).catch(() => null);
       initialCouponCache.set(secid, request);
     }
@@ -335,9 +350,8 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, error: "Бумага не найдена в поиске MOEX" };
 
-    const [{ info, market }, initialCouponRate] = await Promise.all([
-      loadSecuritySnapshot(security), loadInitialCouponRate(security.secid)
-    ]);
+    const { info, market } = await loadSecuritySnapshot(security);
+    loadInitialCouponRate(security.secid);
     const last = pick(market, ["LAST", "LCURRENTPRICE", "MARKETPRICE", "WAPRICE", "LEGALCLOSEPRICE", "PREVPRICE"]);
     const change = pick(market, ["LASTCHANGEPRCNT", "CHANGE"]);
     const yieldValue = pick(market, ["YIELD"]);
@@ -356,7 +370,7 @@
       bid,
       ask,
       yieldValue,
-      initialCouponRate: initialCouponRate ?? (floatingCoupons.has(security.secid) ? null : pick(info, ["COUPONPERCENT"])),
+      initialCouponRate: floatingCoupons.has(security.secid) ? null : pick(info, ["COUPONPERCENT"]),
       couponType: floatingCoupons.has(security.secid) ? "Флоатер" : "Фикс",
       trades,
       value,
@@ -368,7 +382,7 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, points: [], error: "Бумага не найдена в поиске MOEX" };
 
-    const { info } = await loadSecuritySnapshot(security);
+    const infoRequest = loadSecuritySnapshot(security);
     const reportDate = parseDate(reportDateIso);
     const fromDate = addDays(reportDate, -Number(days));
     const fromIso = toIsoDate(fromDate);
@@ -400,6 +414,7 @@
       }))
       .filter((item) => item.date && Number.isFinite(item.close))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    const { info } = await infoRequest;
 
     return {
       alias,
@@ -679,7 +694,7 @@
       row.innerHTML = `
         <td>${quote.shortname || quote.alias}</td>
         <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
-        <td>${couponTerms.get(quote.secid) || formatPercent(quote.initialCouponRate)}</td>
+        <td>${couponTerms.get(quote.secid) || formatPercent(initialCouponRates.get(quote.secid) ?? quote.initialCouponRate)}</td>
         <td>${quote.couponType || "-"}</td>
         <td>${formatDateLong(quote.nextCouponDate)}</td>
         <td>${formatRub(getCouponTotal(quote, reportDateInput.value || todayIso()))}</td>
@@ -781,9 +796,14 @@
     refreshButton.classList.add("loading");
     refreshButton.disabled = true;
     setStatus("", "Обновляю данные");
+    if (!keyRateRequest && Date.now() - keyRateLoadedAt >= 60 * 60 * 1000) {
+      loadKeyRates().then(() => {
+        if (lastQuotes.length) renderQuotes(lastQuotes);
+        if (lastReportItems.length) renderReport(lastReportItems, reportDateInput.value || todayIso());
+      }).catch(() => {});
+    }
 
     try {
-      await loadKeyRates().catch(() => {});
       const results = await Promise.allSettled(aliases.map(loadQuote));
       const quotes = results.map((result, index) => (
         result.status === "fulfilled"
@@ -811,11 +831,11 @@
   }
 
   async function refreshReport() {
+    const requestId = ++reportRequestId;
     const days = historyPeriodSelect.value;
     const reportDateIso = reportDateInput.value || todayIso();
     const cacheKey = `${reportDateIso}:${days}:${aliases.join("|")}`;
     historyStatus.textContent = "Загружаю историю";
-    await loadKeyRates().catch(() => {});
     renderQuotes(lastQuotes);
 
     if (reportCache.has(cacheKey)) {
@@ -825,6 +845,7 @@
     }
 
     const results = await Promise.allSettled(aliases.map((alias) => loadBondReport(alias, reportDateIso, days)));
+    if (requestId !== reportRequestId) return;
     const items = results.map((result, index) => (
       result.status === "fulfilled"
         ? result.value
