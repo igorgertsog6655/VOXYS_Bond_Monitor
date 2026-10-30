@@ -433,7 +433,6 @@
       lastError = error;
     }
 
-    if (lastError) throw lastError;
     const infoResult = await infoRequest;
     if (infoResult.error) throw infoResult.error;
     const { info } = infoResult.snapshot;
@@ -446,10 +445,11 @@
       .filter((item) => item.date && Number.isFinite(item.close))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     let points = toPoints(historyRows);
-    if (!points.length && !lastError && info.BOARDID) {
+    if (!points.length && info.BOARDID) {
       const boardUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(info.BOARDID)}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
       try {
         points = toPoints(await getPagedRows(boardUrl, "history"));
+        if (points.length) lastError = null;
       } catch (error) {
         lastError = error;
       }
@@ -732,7 +732,7 @@
       const redemptionLabel = redemption ? `${formatDateLong(redemption)} (${redemptionType})` : "-";
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${quote.shortname || quote.alias}</td>
+        <td>${quote.alias}</td>
         <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
         <td>${couponTerms.get(quote.secid) || formatPercent(initialCouponRates.get(quote.secid) ?? quote.initialCouponRate)}</td>
         <td>${quote.couponType || "-"}</td>
