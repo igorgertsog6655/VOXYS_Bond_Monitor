@@ -139,6 +139,11 @@
       ? [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000].filter((value) => value <= ceiling)
       : Array.from({ length: Math.round(ceiling / step) + 1 }, (_, i) => i * step);
     const grid = ticks.map((value) => `<g class="cashflow-grid"><line x1="${left}" x2="${width - right}" y1="${y(value)}" y2="${y(value)}"/><text x="${left - 9}" y="${y(value) + 4}" text-anchor="end">${whole.format(value)}</text></g>`).join("");
+    const yearDividers = months.map((month, index) => {
+      if (!index || month.key.slice(0, 4) === months[index - 1].key.slice(0, 4)) return "";
+      const x = left + 1 + index * 48;
+      return `<line class="cashflow-year-divider" x1="${x}" x2="${x}" y1="${top}" y2="${height - bottom}"/>`;
+    }).join("");
     const barWidth = 28;
     const bars = months.map((month, index) => {
       const center = left + 25 + index * 48;
@@ -156,7 +161,7 @@
       const monthLabel = `<text class="cashflow-month" x="${center}" y="${height - 9}" text-anchor="middle">${month.key.slice(5)}/${month.key.slice(2, 4)}</text>`;
       return `${parts}${label}${monthLabel}`;
     }).join("");
-    return `<svg class="cashflow-svg" role="img" aria-label="Помесячные выплаты по выпускам Воксис, млн рублей" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><pattern id="couponHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="white" stroke-opacity=".75" stroke-width="2"/></pattern></defs><text class="cashflow-axis-title" x="${left}" y="18">млн ₽</text>${grid}${bars}</svg>`;
+    return `<svg class="cashflow-svg" role="img" aria-label="Помесячные выплаты по выпускам Воксис, млн рублей" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><pattern id="couponHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="white" stroke-opacity=".75" stroke-width="2"/></pattern></defs><text class="cashflow-axis-title" x="${left}" y="18">млн ₽</text>${grid}${yearDividers}${bars}</svg>`;
   }
 
   if (typeof module !== "undefined" && module.exports) {
