@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Облигации Воксис | Монитор MOEX</title>
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261031-year1">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261031-totals1">
 </head>
 <body>
   <main class="app">
@@ -91,7 +91,7 @@
           <tr>
             <th>Бумага</th>
             <th>В обращении</th>
-            <th>Купон при размещении</th>
+            <th title="Для фиксированных выпусков — ставка при размещении; для флоатеров — расчётная ставка на дату отчёта">Ставка купона</th>
             <th>Тип купона</th>
             <th>Ближайший купон</th>
             <th>Сумма купона</th>
@@ -100,6 +100,18 @@
           </tr>
         </thead>
         <tbody id="rows"></tbody>
+        <tfoot>
+          <tr class="issue-total" id="issueTotalRow">
+            <td>Итого</td>
+            <td id="totalOutstanding">-</td>
+            <td id="totalCouponRate" title="Средневзвешенная ставка по объёму в обращении; для флоатера используется ключевая ставка на дату отчёта">-</td>
+            <td></td>
+            <td></td>
+            <td id="totalCouponAmount">-</td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
         </table>
       </div>
     </section>
@@ -129,6 +141,6 @@
 
   <script src="./assets/lucide.min.js" defer></script>
   <script src="./moex-voksis-cashflow.js?v=20261031-year1" defer></script>
-  <script src="./moex-voksis-bond-monitor.js?v=20261031-cashflow1" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261031-totals1" defer></script>
 </body>
 </html>

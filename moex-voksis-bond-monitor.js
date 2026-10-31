@@ -27,6 +27,10 @@
     }
   ];
   const rows = document.querySelector("#rows");
+  const issueTotalRow = document.querySelector("#issueTotalRow");
+  const totalOutstanding = document.querySelector("#totalOutstanding");
+  const totalCouponRate = document.querySelector("#totalCouponRate");
+  const totalCouponAmount = document.querySelector("#totalCouponAmount");
   const refreshButton = document.querySelector("#refreshButton");
   const intervalSelect = document.querySelector("#intervalSelect");
   const historyPeriodSelect = document.querySelector("#historyPeriodSelect");
@@ -718,12 +722,32 @@
   function renderQuotes(quotes) {
     lastQuotes = quotes;
     rows.innerHTML = "";
-    const currentReport = (reportDateInput.value || todayIso()) === todayIso();
+    const reportDateIso = reportDateInput.value || todayIso();
+    const currentReport = reportDateIso === todayIso();
+    const visibleQuotes = quotes.filter((quote) => matchesIssuer(quote.alias));
+    let outstandingSum = 0;
+    let couponSum = 0;
+    let weightedCouponSum = 0;
+    let hasAllOutstanding = currentReport && visibleQuotes.length > 0;
+    let hasAllCoupons = visibleQuotes.length > 0;
+    let hasAllCouponRates = hasAllOutstanding;
 
-    for (const quote of quotes) {
-      if (!matchesIssuer(quote.alias)) continue;
+    for (const quote of visibleQuotes) {
       const outstandingAmount = currentReport && quote.placedSize != null && quote.faceValue != null
         ? quote.placedSize * quote.faceValue : null;
+      const couponTotal = getCouponTotal(quote, reportDateIso);
+      const initialRate = initialCouponRates.get(quote.secid) ?? quote.initialCouponRate;
+      const keyRate = floatingCoupons.has(quote.secid) ? getKeyRateOn(reportDateIso) : null;
+      const couponRate = floatingCoupons.has(quote.secid)
+        ? (keyRate == null ? null : keyRate + 7)
+        : (initialRate == null || initialRate === "" ? null : Number(initialRate));
+      if (outstandingAmount != null && Number.isFinite(outstandingAmount)) outstandingSum += outstandingAmount;
+      else hasAllOutstanding = false;
+      if (couponTotal != null && Number.isFinite(couponTotal)) couponSum += couponTotal;
+      else hasAllCoupons = false;
+      if (outstandingAmount > 0 && Number.isFinite(couponRate)) {
+        weightedCouponSum += outstandingAmount * couponRate;
+      } else if (outstandingAmount !== 0) hasAllCouponRates = false;
       const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
         ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
       const redemption = getEffectiveMaturityDate({
@@ -737,16 +761,21 @@
       row.innerHTML = `
         <td>${quote.alias}</td>
         <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
-        <td>${couponTerms.get(quote.secid) || formatPercent(initialCouponRates.get(quote.secid) ?? quote.initialCouponRate)}</td>
+        <td>${formatPercent(couponRate)}${couponTerms.has(quote.secid) ? ` <span class="volume-share">(${couponTerms.get(quote.secid)})</span>` : ""}</td>
         <td>${quote.couponType || "-"}</td>
         <td>${formatDateLong(quote.nextCouponDate)}</td>
-        <td>${formatRub(getCouponTotal(quote, reportDateInput.value || todayIso()))}</td>
+        <td>${formatRub(couponTotal)}</td>
         <td>${redemptionLabel}</td>
         <td>${formatPercent(quote.yieldValue)}</td>
       `;
       rows.appendChild(row);
     }
-    window.VoxysCashflow?.update(quotes, reportDateInput.value || todayIso(), getKeyRateOn(reportDateInput.value || todayIso()));
+    issueTotalRow.hidden = !visibleQuotes.length;
+    totalOutstanding.textContent = hasAllOutstanding ? formatMillionsRub(outstandingSum) : "-";
+    totalCouponRate.textContent = hasAllCouponRates && outstandingSum > 0
+      ? formatPercent(weightedCouponSum / outstandingSum) : "-";
+    totalCouponAmount.textContent = hasAllCoupons ? formatRub(couponSum) : "-";
+    window.VoxysCashflow?.update(quotes, reportDateIso, getKeyRateOn(reportDateIso));
   }
 
   function renderReport(items, reportDateIso) {
@@ -991,7 +1020,10 @@
   historyYieldToggle.addEventListener("change", () => {
     renderReport(lastReportItems, reportDateInput.value || todayIso());
   });
-  reportDateInput.addEventListener("change", refreshReport);
+  reportDateInput.addEventListener("change", () => {
+    renderQuotes(lastQuotes);
+    refreshReport();
+  });
   window.addEventListener("resize", () => {
     renderQuotes(lastQuotes);
     renderReport(lastReportItems, reportDateInput.value || todayIso());
