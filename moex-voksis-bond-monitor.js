@@ -344,6 +344,7 @@
     const placedValue = pick(info, ["ISSUESIZEPLACED"]);
     const placedSize = placedValue == null || placedValue === "" ? null : Number(placedValue);
     const faceValue = Number(pick(info, ["FACEVALUE", "INITIALFACEVALUE"]));
+    const initialFaceValue = Number(pick(info, ["INITIALFACEVALUE", "FACEVALUE"]));
     const couponValue = Number(pick(info, ["COUPONVALUE", "NEXTCOUPONVALUE"]));
     return {
       nextCouponDate: pick(info, ["NEXTCOUPON", "COUPONDATE", "NEXTCOUPONDATE"]),
@@ -357,6 +358,8 @@
       placedPercent: Number.isFinite(registeredSize) && registeredSize > 0 && Number.isFinite(placedSize)
         ? placedSize / registeredSize * 100 : null,
       faceValue: Number.isFinite(faceValue) ? faceValue : null,
+      initialFaceValue: Number.isFinite(initialFaceValue) ? initialFaceValue : null,
+      couponPeriod: pick(info, ["COUPONPERIOD"]),
       issueAmount: Number.isFinite(issueSize) && Number.isFinite(faceValue) ? issueSize * faceValue : null
     };
   }
@@ -743,6 +746,7 @@
       `;
       rows.appendChild(row);
     }
+    window.VoxysCashflow?.update(quotes, reportDateInput.value || todayIso(), getKeyRateOn(reportDateInput.value || todayIso()));
   }
 
   function renderReport(items, reportDateIso) {

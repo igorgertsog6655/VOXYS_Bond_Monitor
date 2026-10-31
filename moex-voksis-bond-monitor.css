@@ -103,9 +103,32 @@ td:first-child { font-weight: 650; color: var(--accent-strong); }
 tbody tr:hover td { background: #f6f8ee; }
 tbody tr:last-child td { border-bottom: 0; }
 .volume-share { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.cashflow-section { margin-top: 30px; }
+.cashflow-scale { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.cashflow-scale input, .cashflow-offer input { accent-color: var(--accent); margin: 0; }
+.cashflow-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 17px; padding: 11px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cashflow-controls-title { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.cashflow-offers { display: flex; flex-wrap: wrap; gap: 8px; }
+.cashflow-offer { display: inline-flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); font-size: 12px; font-weight: 600; cursor: pointer; }
+.cashflow-offer:has(input:checked) { border-color: #9ab18a; background: #eff5e9; }
+.cashflow-offer a { display: inline-flex; color: var(--muted); }
+.cashflow-offer svg { width: 13px; height: 13px; }
+.cashflow-legend { display: flex; flex-wrap: wrap; gap: 7px 17px; margin: 14px 0 6px; }
+.cashflow-legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: 12px; font-weight: 600; }
+.cashflow-swatch { width: 11px; height: 11px; background: var(--issue-color); border-radius: 2px; }
+.cashflow-key { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; color: var(--muted); font-size: 11px; }
+.cashflow-key-solid, .cashflow-key-hatch { width: 13px; height: 13px; display: inline-block; background: #6579a4; }
+.cashflow-key-hatch { margin-left: 10px; background: repeating-linear-gradient(45deg, #6579a4 0 3px, #e7ebf1 3px 5px); }
+.cashflow-chart { width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-top: 3px solid #dfb532; border-radius: 7px; background: var(--panel); box-shadow: 0 7px 22px rgba(40, 57, 37, .045); }
+.cashflow-svg { display: block; max-width: none; font: 11px "Source Sans Pro", "Segoe UI", Arial, sans-serif; }
+.cashflow-grid line { stroke: #e6ebe4; stroke-dasharray: 3 4; }
+.cashflow-grid text, .cashflow-month, .cashflow-axis-title { fill: var(--muted); }
+.cashflow-total { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.cashflow-empty { margin: 0; padding: 45px 20px; color: var(--muted); text-align: center; }
+.cashflow-status { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .footnote { margin-top: 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .footnote a { color: var(--accent); text-underline-offset: 2px; }
 .empty { color: var(--muted); }
 @media (max-width: 1100px) { .topbar { align-items: start; flex-direction: column; gap: 20px; } .toolbar { justify-content: flex-start; } }
 @media (max-width: 900px) { .report-row { grid-template-columns: 1fr; } .metrics-panel { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card.wide { grid-column: auto; } .metric-card:nth-child(even):not(.wide) { border-left: 0; padding-left: 0; } }
-@media (max-width: 600px) { .app { width: calc(100% - 28px); padding-bottom: 24px; } .topbar { padding: 20px 0 15px; } h1 { font-size: 30px; } .toolbar { width: 100%; gap: 9px; } .toolbar .interval { flex: 1 1 130px; } .toolbar .interval select, .toolbar .interval input { width: 100%; } .series-toggle { order: 2; width: 100%; align-items: center; } .series-toggle > span { margin-left: 0; } .status-strip { align-items: start; flex-direction: column; gap: 4px; margin: 6px 0 20px; } .section-head { align-items: start; flex-direction: column; gap: 7px; } .section-head h2 { font-size: 20px; } #historyStatus { text-align: left; } .report-row { padding: 16px 14px; gap: 13px; } .card-title { font-size: 17px; } .secid { font-size: 10px; } .report-row canvas { height: 250px; } .metric-grid { grid-template-columns: 1fr; } .metric-card.wide { grid-column: 1; } .table-section { margin-top: 26px; } }
+@media (max-width: 600px) { .app { width: calc(100% - 28px); padding-bottom: 24px; } .topbar { padding: 20px 0 15px; } h1 { font-size: 30px; } .toolbar { width: 100%; gap: 9px; } .toolbar .interval { flex: 1 1 130px; } .toolbar .interval select, .toolbar .interval input { width: 100%; } .series-toggle { order: 2; width: 100%; align-items: center; } .series-toggle > span { margin-left: 0; } .status-strip { align-items: start; flex-direction: column; gap: 4px; margin: 6px 0 20px; } .section-head { align-items: start; flex-direction: column; gap: 7px; } .section-head h2 { font-size: 20px; } #historyStatus { text-align: left; } .report-row { padding: 16px 14px; gap: 13px; } .card-title { font-size: 17px; } .secid { font-size: 10px; } .report-row canvas { height: 250px; } .metric-grid { grid-template-columns: 1fr; } .metric-card.wide { grid-column: 1; } .table-section, .cashflow-section { margin-top: 26px; } .cashflow-controls { align-items: start; flex-direction: column; } }

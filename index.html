@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Облигации Воксис | Монитор MOEX</title>
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261030-vpn1">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261031-cashflow1">
 </head>
 <body>
   <main class="app">
@@ -104,12 +104,31 @@
       </div>
     </section>
 
+    <section class="cashflow-section" aria-label="Календарь выплат">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Денежный поток</p>
+          <h2>Выплаты по выпускам</h2>
+        </div>
+        <label class="cashflow-scale"><input id="cashflowLogToggle" type="checkbox"> Логарифмическая шкала</label>
+      </div>
+      <div class="cashflow-controls">
+        <span class="cashflow-controls-title">Исполнить оферту</span>
+        <div id="cashflowOffers" class="cashflow-offers"></div>
+      </div>
+      <div id="cashflowLegend" class="cashflow-legend"></div>
+      <div class="cashflow-key"><span class="cashflow-key-solid"></span> Номинал <span class="cashflow-key-hatch"></span> Купоны</div>
+      <div id="cashflowChart" class="cashflow-chart" aria-live="polite"></div>
+      <p id="cashflowStatus" class="cashflow-status"></p>
+    </section>
+
     <footer class="footnote">
       Данные загружаются с iss.moex.com. История ключевой ставки: <a href="https://kurs-rublya.ru/" target="_blank" rel="noopener noreferrer">курс рубля, данные ЦБ РФ</a>. Объём в обращении доступен на текущую дату. Исторические метрики берут ближайшую предыдущую торговую дату, если на календарную дату торгов не было.
     </footer>
   </main>
 
   <script src="./assets/lucide.min.js" defer></script>
-  <script src="./moex-voksis-bond-monitor.js?v=20261030-chart1" defer></script>
+  <script src="./moex-voksis-cashflow.js?v=20261031-cashflow1" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261031-cashflow1" defer></script>
 </body>
 </html>
