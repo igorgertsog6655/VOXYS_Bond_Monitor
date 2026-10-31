@@ -153,8 +153,7 @@
         return `<g><rect x="${center - barWidth / 2}" y="${y(cumulative)}" width="${barWidth}" height="${barHeight}" fill="${color}"/><rect x="${center - barWidth / 2}" y="${y(cumulative)}" width="${barWidth}" height="${barHeight}" fill="${item.kind === "coupon" ? "url(#couponHatch)" : "transparent"}"/><title>${label}</title></g>`;
       }).join("");
       const label = cumulative > 0 ? `<text class="cashflow-total" x="${center}" y="${Math.max(19, y(cumulative) - 7)}" text-anchor="middle">${whole.format(cumulative)}</text>` : "";
-      const monthLabel = (index % 2 === 0 || index === months.length - 1)
-        ? `<text class="cashflow-month" x="${center}" y="${height - 9}" text-anchor="middle">${month.key.slice(5)}/${month.key.slice(2, 4)}</text>` : "";
+      const monthLabel = `<text class="cashflow-month" x="${center}" y="${height - 9}" text-anchor="middle">${month.key.slice(5)}/${month.key.slice(2, 4)}</text>`;
       return `${parts}${label}${monthLabel}`;
     }).join("");
     return `<svg class="cashflow-svg" role="img" aria-label="Помесячные выплаты по выпускам Воксис, млн рублей" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><pattern id="couponHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="white" stroke-opacity=".75" stroke-width="2"/></pattern></defs><text class="cashflow-axis-title" x="${left}" y="18">млн ₽</text>${grid}${bars}</svg>`;
