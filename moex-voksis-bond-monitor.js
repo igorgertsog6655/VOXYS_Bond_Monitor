@@ -31,6 +31,7 @@
   const totalOutstanding = document.querySelector("#totalOutstanding");
   const totalCouponRate = document.querySelector("#totalCouponRate");
   const totalCouponAmount = document.querySelector("#totalCouponAmount");
+  const issueTotalNote = document.querySelector("#issueTotalNote");
   const refreshButton = document.querySelector("#refreshButton");
   const intervalSelect = document.querySelector("#intervalSelect");
   const historyPeriodSelect = document.querySelector("#historyPeriodSelect");
@@ -728,9 +729,10 @@
     let outstandingSum = 0;
     let couponSum = 0;
     let weightedCouponSum = 0;
-    let hasAllOutstanding = currentReport && visibleQuotes.length > 0;
-    let hasAllCoupons = visibleQuotes.length > 0;
-    let hasAllCouponRates = hasAllOutstanding;
+    let hasKnownOutstanding = false;
+    let hasKnownCoupons = false;
+    let hasAllCouponRates = true;
+    const missingQuotes = new Set();
 
     for (const quote of visibleQuotes) {
       const outstandingAmount = currentReport && quote.placedSize != null && quote.faceValue != null
@@ -741,13 +743,20 @@
       const couponRate = floatingCoupons.has(quote.secid)
         ? (keyRate == null ? null : keyRate + 7)
         : (initialRate == null || initialRate === "" ? null : Number(initialRate));
-      if (outstandingAmount != null && Number.isFinite(outstandingAmount)) outstandingSum += outstandingAmount;
-      else hasAllOutstanding = false;
-      if (couponTotal != null && Number.isFinite(couponTotal)) couponSum += couponTotal;
-      else hasAllCoupons = false;
+      if (outstandingAmount != null && Number.isFinite(outstandingAmount)) {
+        outstandingSum += outstandingAmount;
+        hasKnownOutstanding = true;
+      } else if (currentReport) missingQuotes.add(quote.alias);
+      if (couponTotal != null && Number.isFinite(couponTotal)) {
+        couponSum += couponTotal;
+        hasKnownCoupons = true;
+      } else missingQuotes.add(quote.alias);
       if (outstandingAmount > 0 && Number.isFinite(couponRate)) {
         weightedCouponSum += outstandingAmount * couponRate;
-      } else if (outstandingAmount !== 0) hasAllCouponRates = false;
+      } else if (outstandingAmount !== 0 && Number.isFinite(outstandingAmount)) {
+        hasAllCouponRates = false;
+        missingQuotes.add(quote.alias);
+      }
       const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
         ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
       const redemption = getEffectiveMaturityDate({
@@ -771,10 +780,14 @@
       rows.appendChild(row);
     }
     issueTotalRow.hidden = !visibleQuotes.length;
-    totalOutstanding.textContent = hasAllOutstanding ? formatMillionsRub(outstandingSum) : "-";
-    totalCouponRate.textContent = hasAllCouponRates && outstandingSum > 0
+    totalOutstanding.textContent = hasKnownOutstanding ? formatMillionsRub(outstandingSum) : "-";
+    totalCouponRate.textContent = currentReport && hasAllCouponRates && outstandingSum > 0
       ? formatPercent(weightedCouponSum / outstandingSum) : "-";
-    totalCouponAmount.textContent = hasAllCoupons ? formatRub(couponSum) : "-";
+    totalCouponAmount.textContent = hasKnownCoupons ? formatRub(couponSum) : "-";
+    issueTotalNote.hidden = !visibleQuotes.length || (currentReport && !missingQuotes.size);
+    issueTotalNote.textContent = currentReport
+      ? `Неполные данные: ${[...missingQuotes].join(", ")}. Каждый итог рассчитан по доступным значениям MOEX.`
+      : "Объём в обращении и средневзвешенная ставка доступны только на текущую дату; сумма купонов — по доступным данным MOEX.";
     window.VoxysCashflow?.update(quotes, reportDateIso, getKeyRateOn(reportDateIso));
   }
 
