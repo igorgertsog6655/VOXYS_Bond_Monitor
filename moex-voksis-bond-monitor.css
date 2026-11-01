@@ -133,6 +133,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .cashflow-status { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .footnote { margin-top: 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .footnote a { color: var(--accent); text-underline-offset: 2px; }
+.copyright { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 600; }
 .empty { color: var(--muted); }
 @media (max-width: 1100px) { .topbar { align-items: start; flex-direction: column; gap: 20px; } .toolbar { justify-content: flex-start; } }
 @media (max-width: 900px) { .report-row { grid-template-columns: 1fr; } .metrics-panel { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card.wide { grid-column: auto; } .metric-card:nth-child(even):not(.wide) { border-left: 0; padding-left: 0; } }
