@@ -141,6 +141,9 @@ tbody tr:last-child td { border-bottom: 0; }
 .payment-calendar-day, .payment-calendar-blank { min-width: 0; min-height: 88px; padding: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .payment-calendar-blank, .payment-calendar-day.is-outside { background: #e9eeea; }
 .payment-calendar-day.has-payment { background: #fcfdf9; }
+.payment-calendar-day.is-day-off { background: #fcebed; }
+.payment-calendar-day.is-day-off .payment-calendar-date { color: #a95668; }
+.payment-calendar-weekday:nth-child(6), .payment-calendar-weekday:nth-child(7) { background: #f8e3e8; color: #a95668; }
 .payment-calendar-date { display: block; margin-bottom: 4px; color: var(--ink); font-size: 12px; font-weight: 700; }
 .payment-calendar-day.is-outside .payment-calendar-date { color: #a5afa5; }
 .payment-calendar-entry { display: flex; flex-direction: column; gap: 1px; margin: 5px 0; padding: 4px 4px 4px 7px; border-left: 3px solid var(--issue-color); background: color-mix(in srgb, var(--issue-color) 8%, white); line-height: 1.2; overflow-wrap: anywhere; }

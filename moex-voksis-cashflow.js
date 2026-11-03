@@ -119,6 +119,26 @@
     return { months, warnings: [...new Set(warnings)], estimated };
   }
 
+  function isRussianDayOff(iso) {
+    // Government resolutions 1466 (2026) and 1187 (2027).
+    const extraDaysOff = new Set(["2026-01-09", "2026-12-31", "2027-02-22", "2027-11-05", "2027-12-31"]);
+    if (iso === "2027-02-20") return false;
+    const date = new Date(`${iso}T00:00:00Z`);
+    const weekday = date.getUTCDay();
+    const holiday = iso.slice(5);
+    if (weekday === 0 || weekday === 6 || extraDaysOff.has(iso)) return true;
+    if (/^01-0[1-8]$/.test(holiday)) return true;
+    const fixedHolidays = ["02-23", "03-08", "05-01", "05-09", "06-12", "11-04"];
+    if (fixedHolidays.includes(holiday)) return true;
+    return fixedHolidays.some((day) => {
+      const original = new Date(`${iso.slice(0, 4)}-${day}T00:00:00Z`);
+      const originalWeekday = original.getUTCDay();
+      if (originalWeekday !== 0 && originalWeekday !== 6) return false;
+      original.setUTCDate(original.getUTCDate() + (originalWeekday === 6 ? 2 : 1));
+      return original.toISOString().slice(0, 10) === iso;
+    });
+  }
+
   function buildCalendarMonths(series, reportDate, minimumDays = 60) {
     const end = new Date(`${reportDate}T00:00:00Z`);
     end.setUTCDate(end.getUTCDate() + minimumDays);
@@ -138,7 +158,7 @@
       const firstWeekday = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
       const days = Array.from({ length }, (_, index) => {
         const date = `${cursor}-${String(index + 1).padStart(2, "0")}`;
-        return { date, day: index + 1, inRange: date >= reportDate && date <= lastDay, payments: payments.get(date) || [] };
+        return { date, day: index + 1, dayOff: isRussianDayOff(date), inRange: date >= reportDate && date <= lastDay, payments: payments.get(date) || [] };
       });
       months.push({ key: cursor, firstWeekday, days });
       cursor = `${year + (month === 12 ? 1 : 0)}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}`;
@@ -162,7 +182,7 @@
           const amount = item.amount >= 1 ? `${money.format(item.amount)} млн ₽` : `${whole.format(item.amount * 1000)} тыс. ₽`;
           return `<div class="payment-calendar-entry" style="--issue-color:${color}" title="${item.alias} · ${typeNames[item.type]} · ${whole.format(item.amount * million)} ₽"><span class="payment-calendar-amount">${amount}</span><span class="payment-calendar-detail">${typeNames[item.type]} · ${item.alias}</span></div>`;
         }).join("");
-        return `<div class="payment-calendar-day${day.inRange ? "" : " is-outside"}${entries ? " has-payment" : ""}" aria-label="${day.date}"><span class="payment-calendar-date">${day.day}</span>${entries}</div>`;
+        return `<div class="payment-calendar-day${day.inRange ? "" : " is-outside"}${entries ? " has-payment" : ""}${day.dayOff ? " is-day-off" : ""}" aria-label="${day.date}${day.dayOff ? " · Выходной или праздничный день" : ""}"><span class="payment-calendar-date">${day.day}</span>${entries}</div>`;
       }).join("");
       return `<section class="payment-calendar-month" aria-label="${displayTitle}"><h4>${displayTitle}</h4><div class="payment-calendar-grid">${weekdays.map((day) => `<span class="payment-calendar-weekday">${day}</span>`).join("")}${blanks}${days}${trailingBlanks}</div></section>`;
     }).join("");
@@ -216,7 +236,7 @@
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { offers, normalizeSchedule, buildPaymentSeries, buildCalendarMonths, renderCalendar, renderSvg };
+    module.exports = { offers, isRussianDayOff, normalizeSchedule, buildPaymentSeries, buildCalendarMonths, renderCalendar, renderSvg };
   }
   if (typeof document === "undefined") return;
 
