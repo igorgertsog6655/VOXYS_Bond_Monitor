@@ -12,18 +12,18 @@
   const edisclosureOptions = [
     {
       aliases: ["Воксис-01", "RU000A10AC67"],
-      date: "2026-12-07",
-      source: "https://www.e-disclosure.ru/portal/event.aspx?EventId=j4crP6Pt9U-Cd9nJu3wkZog-B-B"
-    },
-    {
-      aliases: ["Воксис-02", "RU000A10B222"],
-      date: "2026-03-10",
-      source: "https://www.e-disclosure.ru/portal/event.aspx?EventId=q4S-A3ClKV0akMhzoFPcvyg-B-B"
+      date: "2026-12-15",
+      source: "https://fs.moex.com/f/21240/uvedomlenie-25.pdf"
     },
     {
       aliases: ["Воксис-03", "RU000A10BW39"],
       date: "2026-12-19",
-      source: "https://www.e-disclosure.ru/portal/event.aspx?EventId=WiLxLnLHIU63blMrDCAV4A-B-B"
+      source: "https://fs.moex.com/f/22333/uvedomlenie-27.pdf"
+    },
+    {
+      aliases: ["Воксис-03", "RU000A10BW39"],
+      date: "2027-12-14",
+      source: "https://fs.moex.com/f/22333/uvedomlenie-27.pdf"
     }
   ];
   const rows = document.querySelector("#rows");
@@ -252,7 +252,7 @@
     ].map(normalizeKey).filter(Boolean);
 
     const found = edisclosureOptions.find((item) => (
-      item.aliases.some((value) => keys.includes(normalizeKey(value)))
+      item.date > todayIso() && item.aliases.some((value) => keys.includes(normalizeKey(value)))
     ));
     return found?.date || null;
   }
@@ -933,7 +933,10 @@
     const reportDateIso = reportDateInput.value || todayIso();
     const cacheKey = `${reportDateIso}:${days}:${aliases.join("|")}`;
     const saved = readSaved(`report:${cacheKey}`);
-    const savedItems = Array.isArray(saved?.data) ? saved.data : null;
+    const savedItems = Array.isArray(saved?.data) ? saved.data.map((item) => ({
+      ...item,
+      optionDate: getEdisclosureOptionDate(item.alias, { secid: item.secid }, {})
+    })) : null;
     historyStatus.textContent = savedItems
       ? `Сохранённый отчёт от ${formatDateTime(saved.savedAt)} · проверяю обновления`
       : "Загружаю историю";

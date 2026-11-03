@@ -131,6 +131,21 @@ tbody tr:last-child td { border-bottom: 0; }
 .cashflow-total { fill: var(--ink); font-size: 12px; font-weight: 700; }
 .cashflow-empty { margin: 0; padding: 45px 20px; color: var(--muted); text-align: center; }
 .cashflow-status { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.payment-calendar-head { display: flex; justify-content: space-between; align-items: end; gap: 18px; margin: 35px 0 12px; }
+.payment-calendar-head h3 { margin: 2px 0 0; font: 600 23px "Lora", Georgia, serif; }
+.payment-calendar-range { color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.payment-calendar-month { border-top: 1px solid var(--line); padding: 16px 0 24px; }
+.payment-calendar-month h4 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+.payment-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); background: var(--panel); }
+.payment-calendar-weekday { padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #edf2e8; color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; }
+.payment-calendar-day, .payment-calendar-blank { min-width: 0; min-height: 88px; padding: 7px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.payment-calendar-blank, .payment-calendar-day.is-outside { background: #f5f7f3; }
+.payment-calendar-day.has-payment { background: #fcfdf9; }
+.payment-calendar-date { display: block; margin-bottom: 4px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.payment-calendar-day.is-outside .payment-calendar-date { color: #a5afa5; }
+.payment-calendar-entry { display: flex; flex-direction: column; gap: 1px; margin: 5px 0; padding: 4px 4px 4px 7px; border-left: 3px solid var(--issue-color); background: color-mix(in srgb, var(--issue-color) 8%, white); line-height: 1.2; overflow-wrap: anywhere; }
+.payment-calendar-amount { color: var(--ink); font-size: 12px; font-weight: 700; }
+.payment-calendar-detail { color: var(--muted); font-size: 10px; }
 .footnote { margin-top: 16px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .footnote a { color: var(--accent); text-underline-offset: 2px; }
 .copyright { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 600; }
@@ -138,3 +153,4 @@ tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 1100px) { .topbar { align-items: start; flex-direction: column; gap: 20px; } .toolbar { justify-content: flex-start; } }
 @media (max-width: 900px) { .report-row { grid-template-columns: 1fr; } .metrics-panel { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card.wide { grid-column: auto; } .metric-card:nth-child(even):not(.wide) { border-left: 0; padding-left: 0; } }
 @media (max-width: 600px) { .app { width: calc(100% - 28px); padding-bottom: 24px; } .topbar { padding: 20px 0 15px; } h1 { font-size: 30px; } .toolbar { width: 100%; gap: 9px; } .toolbar .interval { flex: 1 1 130px; } .toolbar .interval select, .toolbar .interval input { width: 100%; } .series-toggle { order: 2; width: 100%; align-items: center; } .series-toggle > span { margin-left: 0; } .status-strip { align-items: start; flex-direction: column; gap: 4px; margin: 6px 0 20px; } .section-head { align-items: start; flex-direction: column; gap: 7px; } .section-head h2 { font-size: 20px; } #historyStatus { text-align: left; } .report-row { padding: 16px 14px; gap: 13px; } .card-title { font-size: 17px; } .secid { font-size: 10px; } .report-row canvas { height: 250px; } .metric-grid { grid-template-columns: 1fr; } .metric-card.wide { grid-column: 1; } .table-section, .cashflow-section { margin-top: 26px; } .cashflow-controls { align-items: start; flex-direction: column; } }
+@media (max-width: 600px) { .payment-calendar-head { align-items: start; flex-direction: column; gap: 4px; } .payment-calendar-head h3 { font-size: 19px; } .payment-calendar-weekday { padding: 6px 2px; } .payment-calendar-day, .payment-calendar-blank { min-height: 68px; padding: 3px; } .payment-calendar-date, .payment-calendar-amount { font-size: 10px; } .payment-calendar-detail { font-size: 9px; } .payment-calendar-entry { padding: 3px; border-left-width: 2px; } }

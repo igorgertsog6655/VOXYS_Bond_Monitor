@@ -6,9 +6,11 @@
     ["Воксис-04", "#6579a4"]
   ];
   const offers = [
-    { alias: "Воксис-01", date: "2026-12-07", source: "https://www.e-disclosure.ru/portal/event.aspx?EventId=j4crP6Pt9U-Cd9nJu3wkZog-B-B" },
-    { alias: "Воксис-03", date: "2026-12-19", source: "https://www.e-disclosure.ru/portal/event.aspx?EventId=WiLxLnLHIU63blMrDCAV4A-B-B" }
+    { alias: "Воксис-01", date: "2026-12-15", source: "https://fs.moex.com/f/21240/uvedomlenie-25.pdf" },
+    { alias: "Воксис-03", date: "2026-12-19", source: "https://fs.moex.com/f/22333/uvedomlenie-27.pdf" },
+    { alias: "Воксис-03", date: "2027-12-14", source: "https://fs.moex.com/f/22333/uvedomlenie-27.pdf" }
   ];
+  const offerId = (offer) => `${offer.alias}:${offer.date}`;
   const million = 1000000;
   const money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
   const whole = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
@@ -61,15 +63,15 @@
       let remaining = initialFace === null ? currentFace : Math.max(0, initialFace - amortRows
         .filter((row) => row.date <= reportDate).reduce((sum, row) => sum + row.value, 0));
       if (!remaining) continue;
-      const selectedOffer = offers.find((item) => item.alias === alias && choices[alias]
+      const selectedOffer = offers.find((item) => item.alias === alias && choices[offerId(item)]
         && item.date > reportDate && item.date < quote.maturityDate);
       const endDate = selectedOffer?.date || quote.maturityDate;
 
-      function add(date, kind, perBond) {
+      function add(date, kind, perBond, type = kind) {
         if (!perBond || date <= reportDate || date > endDate) return;
         const key = monthKey(date);
         if (!payments.has(key)) payments.set(key, []);
-        payments.get(key).push({ alias, kind, date, amount: perBond * count / million });
+        payments.get(key).push({ alias, kind, type, date, amount: perBond * count / million });
       }
 
       const eventDates = [...new Set([
@@ -94,13 +96,13 @@
           }
           if (value !== null) add(date, "coupon", value);
         }
-        for (const amort of amortRows.filter((row) => row.date === date)) {
+        for (const amort of amortRows.filter((row) => row.date === date && date !== selectedOffer?.date)) {
           const principal = Math.min(remaining, amort.value);
-          add(date, "principal", principal);
+          add(date, "principal", principal, "amortization");
           remaining -= principal;
         }
         if (date === endDate && remaining > 0) {
-          add(date, "principal", remaining);
+          add(date, "principal", remaining, selectedOffer ? "offer" : "maturity");
           remaining = 0;
         }
       }
@@ -115,6 +117,52 @@
       cursor = `${year + (month === 12 ? 1 : 0)}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}`;
     }
     return { months, warnings: [...new Set(warnings)], estimated };
+  }
+
+  function buildCalendarMonths(series, reportDate, minimumDays = 60) {
+    const end = new Date(`${reportDate}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + minimumDays);
+    const lastDay = `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, "0")}-${String(end.getUTCDate()).padStart(2, "0")}`;
+    const payments = new Map();
+    for (const segment of series.months.flatMap((month) => month.segments)) {
+      if (segment.date <= reportDate || segment.date > lastDay) continue;
+      if (!payments.has(segment.date)) payments.set(segment.date, []);
+      payments.get(segment.date).push(segment);
+    }
+    const months = [];
+    let cursor = monthKey(reportDate);
+    while (cursor <= monthKey(lastDay)) {
+      const [year, month] = cursor.split("-").map(Number);
+      const length = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const firstWeekday = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+      const days = Array.from({ length }, (_, index) => {
+        const date = `${cursor}-${String(index + 1).padStart(2, "0")}`;
+        return { date, day: index + 1, inRange: date >= reportDate && date <= lastDay, payments: payments.get(date) || [] };
+      });
+      months.push({ key: cursor, firstWeekday, days });
+      cursor = `${year + (month === 12 ? 1 : 0)}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}`;
+    }
+    return { months, endDate: lastDay };
+  }
+
+  function renderCalendar(calendar) {
+    const typeNames = { coupon: "Купон", amortization: "Амортизация", offer: "Оферта", maturity: "Погашение" };
+    const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+    return calendar.months.map((month) => {
+      const [year, number] = month.key.split("-").map(Number);
+      const title = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, number - 1, 1)));
+      const displayTitle = title[0].toUpperCase() + title.slice(1);
+      const blanks = Array.from({ length: month.firstWeekday }, () => '<span class="payment-calendar-blank" aria-hidden="true"></span>').join("");
+      const days = month.days.map((day) => {
+        const entries = day.payments.map((item) => {
+          const color = issues.find(([alias]) => alias === item.alias)?.[1] || "#777";
+          const amount = item.amount >= 1 ? `${money.format(item.amount)} млн ₽` : `${whole.format(item.amount * 1000)} тыс. ₽`;
+          return `<div class="payment-calendar-entry" style="--issue-color:${color}" title="${item.alias} · ${typeNames[item.type]} · ${whole.format(item.amount * million)} ₽"><span class="payment-calendar-amount">${amount}</span><span class="payment-calendar-detail">${typeNames[item.type]} · ${item.alias}</span></div>`;
+        }).join("");
+        return `<div class="payment-calendar-day${day.inRange ? "" : " is-outside"}${entries ? " has-payment" : ""}" aria-label="${day.date}"><span class="payment-calendar-date">${day.day}</span>${entries}</div>`;
+      }).join("");
+      return `<section class="payment-calendar-month" aria-label="${displayTitle}"><h4>${displayTitle}</h4><div class="payment-calendar-grid">${weekdays.map((day) => `<span class="payment-calendar-weekday">${day}</span>`).join("")}${blanks}${days}</div></section>`;
+    }).join("");
   }
 
   function niceStep(maximum) {
@@ -165,7 +213,7 @@
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { normalizeSchedule, buildPaymentSeries, renderSvg };
+    module.exports = { offers, normalizeSchedule, buildPaymentSeries, buildCalendarMonths, renderCalendar, renderSvg };
   }
   if (typeof document === "undefined") return;
 
@@ -174,13 +222,21 @@
   const offerControls = document.querySelector("#cashflowOffers");
   const legend = document.querySelector("#cashflowLegend");
   const logToggle = document.querySelector("#cashflowLogToggle");
-  if (!chart || !status || !offerControls || !legend || !logToggle) return;
+  const calendar = document.querySelector("#paymentCalendar");
+  const calendarRange = document.querySelector("#paymentCalendarRange");
+  if (!chart || !status || !offerControls || !legend || !logToggle || !calendar || !calendarRange) return;
   const schedules = {};
   const requests = new Map();
   const failedAt = new Map();
   const choices = {};
   let context = { quotes: [], date: "", keyRate: null };
   try { Object.assign(choices, JSON.parse(localStorage.getItem("voxys-monitor:offer-choices") || "{}")); } catch (_) {}
+  for (const offer of offers) {
+    if (choices[offer.alias] && choices[offerId(offer)] === undefined) {
+      choices[offerId(offer)] = true;
+      delete choices[offer.alias];
+    }
+  }
 
   function displayDate(iso) {
     const [year, month, day] = iso.split("-");
@@ -194,12 +250,15 @@
       const quote = quotes.find((item) => item.alias === offer.alias);
       return quote?.placedSize && offer.date > date && offer.date < quote.maturityDate;
     });
-    offerControls.innerHTML = activeOffers.map((offer) => `<label class="cashflow-offer"><input type="checkbox" data-alias="${offer.alias}" ${choices[offer.alias] ? "checked" : ""}><span>${offer.alias} · ${displayDate(offer.date)}</span><a href="${offer.source}" target="_blank" rel="noopener noreferrer" title="Условия оферты" aria-label="Условия оферты ${offer.alias}"><i data-lucide="external-link" aria-hidden="true"></i></a></label>`).join("");
+    offerControls.innerHTML = activeOffers.map((offer) => `<label class="cashflow-offer"><input type="checkbox" data-offer="${offerId(offer)}" ${choices[offerId(offer)] ? "checked" : ""}><span>${offer.alias} · ${displayDate(offer.date)}</span><a href="${offer.source}" target="_blank" rel="noopener noreferrer" title="Условия оферты" aria-label="Условия оферты ${offer.alias}"><i data-lucide="external-link" aria-hidden="true"></i></a></label>`).join("");
     legend.innerHTML = issues.filter(([alias]) => quotes.some((item) => item.alias === alias && item.placedSize))
       .map(([alias, color]) => `<span class="cashflow-legend-item"><span class="cashflow-swatch" style="--issue-color:${color}"></span>${alias}</span>`).join("");
     const series = buildPaymentSeries(quotes, schedules, choices, date, keyRate);
     const hasPayments = series.months.some((month) => month.segments.length);
     chart.innerHTML = hasPayments ? renderSvg(series, logToggle.checked) : '<p class="cashflow-empty">Нет подтверждённого календаря выплат для выбранной даты.</p>';
+    const calendarData = buildCalendarMonths(series, date);
+    calendar.innerHTML = renderCalendar(calendarData);
+    calendarRange.textContent = `${displayDate(date)} — ${displayDate(calendarData.endDate)}`;
     const missing = series.warnings.length ? `Не хватает данных: ${series.warnings.join(", ")}. ` : "";
     const estimate = series.estimated ? "Необъявленные купоны оценены по ставке на дату отчёта. " : "";
     status.textContent = `${requests.size ? "Загружаю календари MOEX. " : ""}${missing}${estimate}Объём в обращении взят из текущих данных MOEX.`;
@@ -228,9 +287,13 @@
   }
 
   offerControls.addEventListener("change", (event) => {
-    const alias = event.target.dataset?.alias;
-    if (!alias) return;
-    choices[alias] = event.target.checked;
+    const id = event.target.dataset?.offer;
+    if (!id) return;
+    const alias = id.split(":")[0];
+    if (event.target.checked) {
+      for (const offer of offers.filter((item) => item.alias === alias)) choices[offerId(offer)] = false;
+    }
+    choices[id] = event.target.checked;
     try { localStorage.setItem("voxys-monitor:offer-choices", JSON.stringify(choices)); } catch (_) {}
     render();
   });
