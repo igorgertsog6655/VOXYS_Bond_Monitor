@@ -759,11 +759,12 @@
       }
       const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
         ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
+      const optionDate = getEdisclosureOptionDate(quote.alias, { secid: quote.secid }, {});
       const redemption = getEffectiveMaturityDate({
         maturityDate: quote.maturityDate,
-        optionDate: parseDate(quote.optionDate) > parseDate(todayIso()) ? quote.optionDate : null
+        optionDate
       });
-      const redemptionType = redemption && parseDate(quote.optionDate)?.getTime() === redemption.getTime()
+      const redemptionType = redemption && parseDate(optionDate)?.getTime() === redemption.getTime()
         ? "О" : "П";
       const redemptionLabel = redemption ? `${formatDateLong(redemption)} (${redemptionType})` : "-";
       const row = document.createElement("tr");
