@@ -122,6 +122,7 @@
   function buildCalendarMonths(series, reportDate, minimumDays = 60) {
     const end = new Date(`${reportDate}T00:00:00Z`);
     end.setUTCDate(end.getUTCDate() + minimumDays);
+    end.setUTCMonth(end.getUTCMonth() + 1, 0);
     const lastDay = `${end.getUTCFullYear()}-${String(end.getUTCMonth() + 1).padStart(2, "0")}-${String(end.getUTCDate()).padStart(2, "0")}`;
     const payments = new Map();
     for (const segment of series.months.flatMap((month) => month.segments)) {
