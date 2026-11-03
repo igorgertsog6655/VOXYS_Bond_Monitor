@@ -154,6 +154,8 @@
       const title = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, number - 1, 1)));
       const displayTitle = title[0].toUpperCase() + title.slice(1);
       const blanks = Array.from({ length: month.firstWeekday }, () => '<span class="payment-calendar-blank" aria-hidden="true"></span>').join("");
+      const trailingCount = (7 - (month.firstWeekday + month.days.length) % 7) % 7;
+      const trailingBlanks = Array.from({ length: trailingCount }, () => '<span class="payment-calendar-blank" aria-hidden="true"></span>').join("");
       const days = month.days.map((day) => {
         const entries = day.payments.map((item) => {
           const color = issues.find(([alias]) => alias === item.alias)?.[1] || "#777";
@@ -162,7 +164,7 @@
         }).join("");
         return `<div class="payment-calendar-day${day.inRange ? "" : " is-outside"}${entries ? " has-payment" : ""}" aria-label="${day.date}"><span class="payment-calendar-date">${day.day}</span>${entries}</div>`;
       }).join("");
-      return `<section class="payment-calendar-month" aria-label="${displayTitle}"><h4>${displayTitle}</h4><div class="payment-calendar-grid">${weekdays.map((day) => `<span class="payment-calendar-weekday">${day}</span>`).join("")}${blanks}${days}</div></section>`;
+      return `<section class="payment-calendar-month" aria-label="${displayTitle}"><h4>${displayTitle}</h4><div class="payment-calendar-grid">${weekdays.map((day) => `<span class="payment-calendar-weekday">${day}</span>`).join("")}${blanks}${days}${trailingBlanks}</div></section>`;
     }).join("");
   }
 
