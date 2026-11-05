@@ -397,8 +397,8 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, error: "Бумага не найдена в поиске MOEX" };
 
-    const { info, market } = await loadSecuritySnapshot(security);
     loadIssueTerms(security.secid);
+    const { info, market } = await loadSecuritySnapshot(security);
     loadInitialCouponRate(security.secid);
     const last = pick(market, ["LAST", "LCURRENTPRICE", "MARKETPRICE", "WAPRICE", "LEGALCLOSEPRICE", "PREVPRICE"]);
     const change = pick(market, ["LASTCHANGEPRCNT", "CHANGE"]);
