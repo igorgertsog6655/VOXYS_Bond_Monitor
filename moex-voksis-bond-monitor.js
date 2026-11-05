@@ -50,6 +50,8 @@
   let reportCache = new Map();
   const initialCouponCache = new Map();
   const initialCouponRates = new Map();
+  const issueTerms = new Map();
+  const issueTermRequests = new Map();
   let lastQuotes = [];
   let lastReportItems = [];
   let issuerFilter = "all";
@@ -352,6 +354,9 @@
     const initialFaceValue = Number(pick(info, ["INITIALFACEVALUE", "FACEVALUE"]));
     const couponValue = Number(pick(info, ["COUPONVALUE", "NEXTCOUPONVALUE"]));
     return {
+      issueDate: pick(info, ["ISSUEDATE"]),
+      emissionAmount: registeredSize > 0 && Number(pick(info, ["INITIALFACEVALUE"])) > 0
+        ? registeredSize * Number(pick(info, ["INITIALFACEVALUE"])) : null,
       nextCouponDate: pick(info, ["NEXTCOUPON", "COUPONDATE", "NEXTCOUPONDATE"]),
       nextCouponValue: Number.isFinite(couponValue) ? couponValue : null,
       nextCouponTotal: Number.isFinite(couponValue) && Number.isFinite(placedSize) ? couponValue * placedSize : null,
@@ -393,6 +398,7 @@
     if (security.missing) return { ...security, error: "Бумага не найдена в поиске MOEX" };
 
     const { info, market } = await loadSecuritySnapshot(security);
+    loadIssueTerms(security.secid);
     loadInitialCouponRate(security.secid);
     const last = pick(market, ["LAST", "LCURRENTPRICE", "MARKETPRICE", "WAPRICE", "LEGALCLOSEPRICE", "PREVPRICE"]);
     const change = pick(market, ["LASTCHANGEPRCNT", "CHANGE"]);
@@ -418,6 +424,26 @@
       value,
       ...getCouponInfo(info, alias, security)
     };
+  }
+
+  function loadIssueTerms(secid) {
+    if (issueTermRequests.has(secid)) return;
+    const saved = readSaved(`issue-terms:${secid}`);
+    if (saved?.data) issueTerms.set(secid, saved.data);
+    if (saved?.savedAt && Date.now() - saved.savedAt < 86400000) return;
+    const request = getJson(`${apiBase}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=description`).then((json) => {
+      const info = Object.fromEntries(blockToRows(json.description).map((row) => [String(row.name).toUpperCase(), row.value]));
+      const count = Number(pick(info, ["ISSUESIZE"]));
+      const face = Number(pick(info, ["INITIALFACEVALUE"]));
+      const data = {
+        issueDate: pick(info, ["ISSUEDATE"]),
+        emissionAmount: count > 0 && face > 0 ? count * face : null
+      };
+      issueTerms.set(secid, data);
+      saveData(`issue-terms:${secid}`, data);
+      if (lastQuotes.length) renderQuotes(lastQuotes);
+    }).catch(() => {});
+    issueTermRequests.set(secid, request);
   }
 
   async function loadBondReport(alias, reportDateIso, days) {
@@ -768,8 +794,11 @@
         ? "О" : "П";
       const redemptionLabel = redemption ? `${formatDateLong(redemption)} (${redemptionType})` : "-";
       const row = document.createElement("tr");
+      const terms = issueTerms.get(quote.secid);
       row.innerHTML = `
         <td>${quote.alias}</td>
+        <td>${formatDateLong(terms?.issueDate || quote.issueDate)}</td>
+        <td>${formatMillionsRub(terms?.emissionAmount ?? quote.emissionAmount)}</td>
         <td>${formatMillionsRub(outstandingAmount)}${placedShare}</td>
         <td>${formatPercent(couponRate)}${couponTerms.has(quote.secid) ? ` <span class="volume-share">(${couponTerms.get(quote.secid)})</span>` : ""}</td>
         <td>${quote.couponType || "-"}</td>

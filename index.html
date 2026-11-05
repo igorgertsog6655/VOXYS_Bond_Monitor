@@ -90,6 +90,8 @@
         <thead>
           <tr>
             <th>Бумага</th>
+            <th>Дата эмиссии</th>
+            <th title="Заявленный объём выпуска по первоначальному номиналу">Сумма эмиссии</th>
             <th>В обращении</th>
             <th title="Для фиксированных выпусков — ставка при размещении; для флоатеров — расчётная ставка на дату отчёта">Ставка купона</th>
             <th>Тип купона</th>
@@ -103,6 +105,8 @@
         <tfoot>
           <tr class="issue-total" id="issueTotalRow">
             <td>Итого</td>
+            <td></td>
+            <td></td>
             <td id="totalOutstanding">-</td>
             <td id="totalCouponRate" title="Средневзвешенная ставка по объёму в обращении; для флоатера используется ключевая ставка на дату отчёта">-</td>
             <td></td>
@@ -148,6 +152,6 @@
 
   <script src="./assets/lucide.min.js" defer></script>
   <script src="./moex-voksis-cashflow.js?v=20261103-holidays1" defer></script>
-  <script src="./moex-voksis-bond-monitor.js?v=20261103-calendar2" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261105-issuance1" defer></script>
 </body>
 </html>
