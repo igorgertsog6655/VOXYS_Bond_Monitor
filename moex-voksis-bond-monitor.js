@@ -77,6 +77,30 @@
     }
   }
 
+  function readReportHistory(cacheKey, reportDateIso, days) {
+    const exact = readSaved(`report:${cacheKey}`);
+    if (Array.isArray(exact?.data) && exact.data.some((item) => item.points?.length)) return exact;
+    const from = toIsoDate(addDays(reportDateIso, -Number(days)));
+    const prefix = "voxys-monitor:report:";
+    let best = null;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith(prefix)) continue;
+        const candidate = readSaved(key.slice("voxys-monitor:".length));
+        if (!Array.isArray(candidate?.data) || (best && candidate.savedAt <= best.savedAt)) continue;
+        const data = candidate.data.filter((item) => aliases.includes(item.alias)).map((item) => ({
+          ...item,
+          points: (item.points || []).filter((point) => point.date >= from && point.date <= reportDateIso)
+        }));
+        if (data.some((item) => item.points.length)) best = { ...candidate, data };
+      }
+    } catch (_) {
+      // Storage can be disabled.
+    }
+    return best;
+  }
+
   async function loadKeyRates() {
     if (Date.now() - keyRateLoadedAt < 60 * 60 * 1000) return;
     if (!keyRateRequest) {
@@ -397,8 +421,7 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, error: "Бумага не найдена в поиске MOEX" };
 
-    loadIssueTerms(security.secid);
-    const { info, market } = await loadSecuritySnapshot(security);
+    const { info, market } = await loadSecuritySnapshot(security).finally(() => loadIssueTerms(security.secid));
     loadInitialCouponRate(security.secid);
     const last = pick(market, ["LAST", "LCURRENTPRICE", "MARKETPRICE", "WAPRICE", "LEGALCLOSEPRICE", "PREVPRICE"]);
     const change = pick(market, ["LASTCHANGEPRCNT", "CHANGE"]);
@@ -450,9 +473,8 @@
     const security = await resolveAlias(alias);
     if (security.missing) return { ...security, points: [], error: "Бумага не найдена в поиске MOEX" };
 
-    const infoRequest = loadSecuritySnapshot(security).then(
-      (snapshot) => ({ snapshot }), (error) => ({ error })
-    );
+    let snapshot;
+    const infoRequest = loadSecuritySnapshot(security).then((value) => { snapshot = value; }, () => {});
     const reportDate = parseDate(reportDateIso);
     const fromDate = addDays(reportDate, -Number(days));
     const fromIso = toIsoDate(fromDate);
@@ -467,20 +489,20 @@
       lastError = error;
     }
 
-    const infoResult = await infoRequest;
-    if (infoResult.error) throw infoResult.error;
-    const { info } = infoResult.snapshot;
     const toPoints = (rows) => rows.map((item) => ({
         date: pick(item, ["TRADEDATE"]),
-        close: Number(pick(item, ["CLOSE", "LEGALCLOSEPRICE", "WAPRICE", "MARKETPRICE2", "PRICE"])),
-        ytm: Number(pick(item, ["YIELDCLOSE", "YIELDATWAP", "YIELD", "YIELDTOMATURITY", "EFFECTIVEYIELD"])),
+        close: Number(pick(item, ["CLOSE", "LEGALCLOSEPRICE", "WAPRICE", "MARKETPRICE2", "PRICE"]) ?? NaN),
+        ytm: Number(pick(item, ["YIELDCLOSE", "YIELDATWAP", "YIELD", "YIELDTOMATURITY", "EFFECTIVEYIELD"]) ?? NaN),
         value: Number(pick(item, ["VALUE", "VOLUME", "NUMTRADES"]))
       }))
       .filter((item) => item.date && Number.isFinite(item.close))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     let points = toPoints(historyRows);
-    if (!points.length && info.BOARDID) {
-      const boardUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(info.BOARDID)}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
+    if (!points.length) await infoRequest;
+    const savedQuote = lastQuotes.find((item) => item.alias === alias && !item.error);
+    const board = snapshot?.info.BOARDID || savedQuote?.board || security.primaryBoard;
+    if (!points.length && board) {
+      const boardUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(board)}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
       try {
         points = toPoints(await getPagedRows(boardUrl, "history"));
         if (points.length) lastError = null;
@@ -490,13 +512,15 @@
     }
     if (lastError && !points.length) throw lastError;
 
+    const info = snapshot?.info;
     return {
+      ...(info ? getCouponInfo(info, alias, security) : savedQuote || {}),
       alias,
       secid: security.secid,
       shortname: pick(info, ["SHORTNAME", "SECNAME"]) || security.shortname,
-      board: security.primaryBoard,
+      board,
       points,
-      ...getCouponInfo(info, alias, security),
+      optionDate: getEdisclosureOptionDate(alias, security, info || {}),
       error: points.length ? null : (lastError ? lastError.message : "Нет исторических данных за период")
     };
   }
@@ -962,7 +986,7 @@
     const days = historyPeriodSelect.value;
     const reportDateIso = reportDateInput.value || todayIso();
     const cacheKey = `${reportDateIso}:${days}:${aliases.join("|")}`;
-    const saved = readSaved(`report:${cacheKey}`);
+    const saved = readReportHistory(cacheKey, reportDateIso, days);
     const savedItems = Array.isArray(saved?.data) ? saved.data.map((item) => ({
       ...item,
       optionDate: getEdisclosureOptionDate(item.alias, { secid: item.secid }, {})
@@ -984,38 +1008,35 @@
       lastReportItems = [];
     }
 
-    const results = await Promise.allSettled(aliases.map((alias) => loadBondReport(alias, reportDateIso, days)));
-    if (requestId !== reportRequestId) return;
     let failures = 0;
-    const items = results.map((result, index) => {
-      const savedItem = savedItems?.find((item) => item.alias === aliases[index]);
-      if (result.status === "rejected") {
+    let usedSaved = false;
+    const items = aliases.map((alias) => savedItems?.find((item) => item.alias === alias));
+    await Promise.all(aliases.map(async (alias, index) => {
+      try {
+        items[index] = await loadBondReport(alias, reportDateIso, days);
+      } catch (_) {
+        items[index] = savedItems?.find((item) => item.alias === alias);
+        usedSaved ||= Boolean(items[index]?.points?.length);
         failures++;
-        return savedItem || { alias: aliases[index], secid: knownSecids.get(aliases[index]) || aliases[index], points: [], error: result.reason.message };
       }
-      if (!result.value.points.length && savedItem?.points?.length) {
-        failures++;
-        return savedItem;
-      }
-      return result.value;
-    });
+      if (requestId === reportRequestId) renderReport(items.filter(Boolean), reportDateIso);
+    }));
+    if (requestId !== reportRequestId) return;
     if (!failures) {
       reportCache.set(cacheKey, items);
       saveData(`report:${cacheKey}`, items);
     }
-    renderReport(items, reportDateIso);
-
-    const visibleCount = items.filter((item) => (item.points || []).length).length;
+    const visibleCount = items.filter((item) => item?.points?.length).length;
     historyStatus.textContent = failures
-      ? `MOEX: не обновлено выпусков ${failures} из ${aliases.length}${savedItems ? "; показаны сохранённые данные" : "; сохранённых данных нет"}`
+      ? `MOEX: не обновлено выпусков ${failures} из ${aliases.length}${usedSaved ? "; показаны сохранённые данные" : ""}`
       : visibleCount
       ? `Отчет на ${formatDateLong(reportDateIso)} · период: ${historyPeriodSelect.selectedOptions[0].textContent}`
       : "Нет данных для выбранного периода";
   }
 
   function refreshAll() {
-    refreshQuotes();
     refreshReport();
+    refreshQuotes();
   }
 
   function restartTimer() {
