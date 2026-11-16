@@ -277,6 +277,19 @@
     legend.innerHTML = issues.filter(([alias]) => quotes.some((item) => item.alias === alias && item.placedSize))
       .map(([alias, color]) => `<span class="cashflow-legend-item"><span class="cashflow-swatch" style="--issue-color:${color}"></span>${alias}</span>`).join("");
     const series = buildPaymentSeries(quotes, schedules, choices, date, keyRate);
+    if (context.onRedemptions) {
+      const redemptions = {};
+      for (const quote of quotes) {
+        const selected = activeOffers.find((offer) => offer.alias === quote.alias && choices[offerId(offer)]);
+        const first = series.months.flatMap((month) => month.segments)
+          .filter((payment) => payment.alias === quote.alias && payment.kind === "principal" && payment.amount > 0)
+          .sort((a, b) => a.date.localeCompare(b.date))[0];
+        redemptions[quote.alias] = selected
+          ? { date: selected.date, type: "О" }
+          : first ? { date: first.date, type: "П" } : null;
+      }
+      context.onRedemptions(redemptions);
+    }
     const hasPayments = series.months.some((month) => month.segments.length);
     chart.innerHTML = hasPayments ? renderSvg(series, logToggle.checked) : '<p class="cashflow-empty">Нет подтверждённого календаря выплат для выбранной даты.</p>';
     const calendarData = buildCalendarMonths(series, date);
@@ -322,8 +335,8 @@
   });
   logToggle.addEventListener("change", render);
   root.VoxysCashflow = {
-    update(quotes, date, keyRate) {
-      context = { quotes, date, keyRate };
+    update(quotes, date, keyRate, onRedemptions) {
+      context = { quotes, date, keyRate, onRedemptions };
       for (const quote of quotes) {
         if (quote.placedSize && quote.maturityDate && quote.maturityDate > date) loadSchedule(quote);
       }

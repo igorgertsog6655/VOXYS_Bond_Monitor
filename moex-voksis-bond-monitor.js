@@ -783,6 +783,7 @@
     let hasKnownCoupons = false;
     let hasAllCouponRates = true;
     const missingQuotes = new Set();
+    const redemptionCells = new Map();
 
     for (const quote of visibleQuotes) {
       const outstandingAmount = currentReport && quote.placedSize != null && quote.faceValue != null
@@ -809,14 +810,7 @@
       }
       const placedShare = currentReport && quote.placedPercent != null && quote.placedPercent < 99.95
         ? ` <span class="volume-share">(${formatPercent(quote.placedPercent, 1)})</span>` : "";
-      const optionDate = getEdisclosureOptionDate(quote.alias, { secid: quote.secid }, {});
-      const redemption = getEffectiveMaturityDate({
-        maturityDate: quote.maturityDate,
-        optionDate
-      });
-      const redemptionType = redemption && parseDate(optionDate)?.getTime() === redemption.getTime()
-        ? "О" : "П";
-      const redemptionLabel = redemption ? `${formatDateLong(redemption)} (${redemptionType})` : "-";
+      const redemptionLabel = "-";
       const row = document.createElement("tr");
       const terms = issueTerms.get(quote.secid);
       row.innerHTML = `
@@ -832,6 +826,7 @@
         <td>${formatPercent(quote.yieldValue)}</td>
       `;
       rows.appendChild(row);
+      redemptionCells.set(quote.alias, row);
     }
     issueTotalRow.hidden = !visibleQuotes.length;
     totalOutstanding.textContent = hasKnownOutstanding ? formatMillionsRub(outstandingSum) : "-";
@@ -842,7 +837,13 @@
     issueTotalNote.textContent = currentReport
       ? `Неполные данные: ${[...missingQuotes].join(", ")}. Каждый итог рассчитан по доступным значениям MOEX.`
       : "Объём в обращении и средневзвешенная ставка доступны только на текущую дату; сумма купонов — по доступным данным MOEX.";
-    window.VoxysCashflow?.update(quotes, reportDateIso, getKeyRateOn(reportDateIso));
+    window.VoxysCashflow?.update(quotes, reportDateIso, getKeyRateOn(reportDateIso), (redemptions) => {
+      for (const [alias, row] of redemptionCells) {
+        const cell = row.children[8];
+        const redemption = redemptions[alias];
+        if (cell) cell.textContent = redemption ? `${formatDateLong(redemption.date)} (${redemption.type})` : "-";
+      }
+    });
   }
 
   function renderReport(items, reportDateIso) {
