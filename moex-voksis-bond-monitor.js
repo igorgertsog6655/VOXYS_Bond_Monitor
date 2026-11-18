@@ -837,6 +837,36 @@
     for (const date of scale.monthTicks) {
       ctx.fillText(formatChartMonth(date), xForDate(toIsoDate(date)), height - 22);
     }
+    const tooltip = document.createElement("div");
+    tooltip.className = "volume-tooltip";
+    tooltip.hidden = true;
+    canvas.parentElement?.appendChild(tooltip);
+    canvas.onmousemove = (event) => {
+      const bounds = canvas.getBoundingClientRect();
+      const mx = (event.clientX - bounds.left) * width / bounds.width;
+      const my = (event.clientY - bounds.top) * height / bounds.height;
+      tooltip.hidden = true;
+      if (mx < pad.left || mx > width - pad.right || my < pad.top || my > height - pad.bottom) return;
+      let nearest = null;
+      for (const point of points) {
+        const candidates = [
+          scale.showPrice && Number.isFinite(point.close) ? { value: formatNumber(point.close), name: "Курс", y: yForPrice(point.close), color: "#2d7750" } : null,
+          scale.showYield && Number.isFinite(point.ytm) ? { value: formatPercent(point.ytm), name: "Доходность", y: yForYield(point.ytm), color: "#ad6950" } : null
+        ].filter(Boolean);
+        for (const candidate of candidates) {
+          const distance = Math.hypot(mx - xForDate(point.date), my - candidate.y);
+          if (!nearest || distance < nearest.distance) nearest = { ...candidate, date: point.date, distance };
+        }
+      }
+      if (!nearest || nearest.distance > 24) return;
+      tooltip.hidden = false;
+      tooltip.textContent = `${formatDateLong(nearest.date)} · ${nearest.name}: ${nearest.value}`;
+      tooltip.style.background = nearest.color;
+      const parent = canvas.parentElement.getBoundingClientRect();
+      tooltip.style.left = `${Math.max(0, Math.min(event.clientX - parent.left + 10, parent.width - tooltip.offsetWidth))}px`;
+      tooltip.style.top = `${Math.max(0, event.clientY - parent.top - tooltip.offsetHeight - 10)}px`;
+    };
+    canvas.onmouseleave = () => { tooltip.hidden = true; };
   }
 
   function renderQuotes(quotes) {
