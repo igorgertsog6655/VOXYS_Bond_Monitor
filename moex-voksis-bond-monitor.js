@@ -493,6 +493,7 @@
         date: pick(item, ["TRADEDATE"]),
         close: Number(pick(item, ["CLOSE", "LEGALCLOSEPRICE", "WAPRICE", "MARKETPRICE2", "PRICE"]) ?? NaN),
         ytm: Number(pick(item, ["YIELDCLOSE", "YIELDATWAP", "YIELD", "YIELDTOMATURITY", "EFFECTIVEYIELD"]) ?? NaN),
+        turnoverRub: pick(item, ["VALUE"]) == null ? null : Number(item.VALUE),
         value: Number(pick(item, ["VALUE", "VOLUME", "NUMTRADES"]))
       }))
       .filter((item) => item.date && Number.isFinite(item.close))
@@ -619,6 +620,53 @@
       yieldTicks,
       monthTicks: getMonthTicks(dateFrom, dateTo)
     };
+  }
+
+  function drawVolumeChart(canvas, points, scale) {
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(canvas.clientWidth, 1);
+    const height = Math.max(canvas.clientHeight, 1);
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(ratio, ratio);
+    const left = scale.showPrice ? 56 : 18;
+    const right = scale.showYield ? 54 : 18;
+    const plotW = Math.max(1, width - left - right);
+    const plotH = height - 40;
+    const span = scale.dateTo - scale.dateFrom || 1;
+    const valid = points.filter((p) => Number.isFinite(p.turnoverRub) && p.turnoverRub >= 0);
+    ctx.font = '500 11px "Source Sans Pro", "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = "#6d786f";
+    if (!valid.length) {
+      ctx.fillText("Нет данных об объёмах торгов", left, 35);
+      return;
+    }
+    const max = Math.max(...valid.map((p) => p.turnoverRub), 1);
+    const x = (date) => left + (parseDate(date) - scale.dateFrom) / span * plotW;
+    ctx.textAlign = "left";
+    for (let i = 0; i <= 2; i++) {
+      const y = 12 + plotH * (1 - i / 2);
+      ctx.strokeStyle = "#e3e8df";
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
+      ctx.fillStyle = "#6d786f";
+      ctx.fillText(formatNumber(max * i / 2 / 1000000), left, y - 3);
+    }
+    const barWidth = Math.max(1, Math.min(12, plotW * 86400000 / span * 0.75));
+    ctx.save();
+    ctx.beginPath(); ctx.rect(left, 12, plotW, plotH); ctx.clip();
+    ctx.fillStyle = "#5d8979";
+    for (const point of valid) {
+      const barHeight = point.turnoverRub / max * plotH;
+      ctx.fillRect(x(point.date) - barWidth / 2, 12 + plotH - barHeight, barWidth, barHeight);
+    }
+    ctx.restore();
+    ctx.fillStyle = "#6d786f";
+    for (const date of scale.monthTicks) {
+      const label = `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getFullYear()).slice(-2)}`;
+      ctx.fillText(label, Math.min(x(date), width - right - 32), height - 4);
+    }
+    canvas.title = valid.map((p) => `${formatDateLong(p.date)}: ${formatRub(p.turnoverRub)}`).join("\n");
   }
 
   function drawReportChart(canvas, points, scale) {
@@ -885,6 +933,8 @@
             <span class="secid">${item.secid || "-"}</span>
           </div>
           <canvas aria-label="График курса и доходности ${item.alias}"></canvas>
+          <div class="volume-heading">Объём торгов за день, млн ₽</div>
+          <canvas class="volume-chart" aria-label="Дневной объём торгов ${item.alias}"></canvas>
         </div>
         <aside class="metrics-panel">
           <h4 class="metrics-title">Метрики</h4>
@@ -919,11 +969,12 @@
         </aside>
       `;
       historyCharts.appendChild(row);
-      pendingCharts.push({ canvas: row.querySelector("canvas"), points });
+      pendingCharts.push({ canvas: row.querySelector("canvas"), volumeCanvas: row.querySelector(".volume-chart"), points });
     }
 
     for (const item of pendingCharts) {
       drawReportChart(item.canvas, item.points, scale);
+      if (item.volumeCanvas) drawVolumeChart(item.volumeCanvas, item.points, scale);
     }
     if (window.lucide) window.lucide.createIcons();
   }
