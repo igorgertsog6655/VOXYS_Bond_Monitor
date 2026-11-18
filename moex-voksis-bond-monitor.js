@@ -666,7 +666,28 @@
       const label = `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getFullYear()).slice(-2)}`;
       ctx.fillText(label, Math.min(x(date), width - right - 32), height - 4);
     }
-    canvas.title = valid.map((p) => `${formatDateLong(p.date)}: ${formatRub(p.turnoverRub)}`).join("\n");
+    canvas.removeAttribute?.("title");
+    const tooltip = document.createElement("div");
+    tooltip.className = "volume-tooltip";
+    tooltip.hidden = true;
+    canvas.parentElement?.appendChild(tooltip);
+    canvas.onmousemove = (event) => {
+      const bounds = canvas.getBoundingClientRect();
+      const mouseX = (event.clientX - bounds.left) * width / bounds.width;
+      const mouseY = (event.clientY - bounds.top) * height / bounds.height;
+      const point = valid.find((p) => {
+        const barHeight = p.turnoverRub / max * plotH;
+        return p.turnoverRub > 0 && Math.abs(mouseX - x(p.date)) <= barWidth / 2
+          && mouseY >= 12 + plotH - barHeight && mouseY <= 12 + plotH;
+      });
+      tooltip.hidden = !point;
+      if (!point) return;
+      tooltip.textContent = `${formatDateLong(point.date)} · ${formatRub(point.turnoverRub)}`;
+      const parent = canvas.parentElement.getBoundingClientRect();
+      tooltip.style.left = `${Math.max(0, Math.min(event.clientX - parent.left + 10, parent.width - tooltip.offsetWidth))}px`;
+      tooltip.style.top = `${Math.max(0, event.clientY - parent.top - tooltip.offsetHeight - 10)}px`;
+    };
+    canvas.onmouseleave = () => { tooltip.hidden = true; };
   }
 
   function drawReportChart(canvas, points, scale) {

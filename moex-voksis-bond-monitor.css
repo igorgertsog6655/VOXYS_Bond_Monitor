@@ -67,6 +67,9 @@ select, input[type="date"] { min-width: 118px; height: 42px; border: 1px solid v
 .report-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 34%); gap: 23px; align-items: stretch; padding: 20px 22px; border: 1px solid var(--line); border-top: 3px solid #dfb532; border-radius: 7px; background: repeating-linear-gradient(135deg, rgba(71, 90, 56, .008) 0 1px, transparent 1px 9px), var(--panel); box-shadow: 0 7px 22px rgba(40, 57, 37, .055); transition: box-shadow .2s, transform .2s; }
 .report-row:hover { box-shadow: 0 11px 28px rgba(40, 57, 37, .09); transform: translateY(-1px); }
 .report-chart { display: grid; grid-template-rows: auto auto auto auto; align-content: start; gap: 8px; min-width: 0; }
+.report-chart { position: relative; }
+.volume-tooltip { position: absolute; z-index: 2; pointer-events: none; max-width: 100%; padding: 7px 10px; background: #173f2c; color: #fff; border-radius: 4px; font-size: 12px; box-sizing: border-box; }
+.volume-tooltip[hidden] { display: none; }
 .volume-heading { font-size: 12px; color: #6d786f; margin-top: 8px; }
 .report-row canvas.volume-chart { height: 140px; }
 .card-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
