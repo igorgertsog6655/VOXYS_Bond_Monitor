@@ -194,7 +194,7 @@
     return [1, 2, 5, 10].map((factor) => factor * magnitude).find((step) => step >= raw);
   }
 
-  function renderSvg(series, logarithmic) {
+  function renderSvg(series, logarithmic, hideSnow = false) {
     const months = series.months;
     const width = Math.max(920, 88 + months.length * 48);
     const height = 350;
@@ -231,7 +231,7 @@
       const snow = cumulative > 0 ? `<g class="cashflow-snow-cap" aria-hidden="true" pointer-events="none" transform="translate(${center} ${y(cumulative)})"><path d="M-16 0 Q-18-4-12-6 Q-7-10-2-7 Q3-10 8-6 Q16-7 17-1 Q18 3 13 2 Q9 0 5 2 Q1 4-3 1 Q-8 4-11 1 Q-16 4-16 0Z" fill="#f8fcff" stroke="#c9dfed" stroke-width="0.8"/><path d="M-13-3 Q-7-7-2-4 Q3-7 8-3 Q12-4 14-2" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"/></g>` : "";
       const label = cumulative > 0 ? `<text class="cashflow-total" x="${center}" y="${Math.max(19, y(cumulative) - 15)}" text-anchor="middle">${whole.format(cumulative)}</text>` : "";
       const monthLabel = `<text class="cashflow-month" x="${center}" y="${height - 9}" text-anchor="middle">${month.key.slice(5)}/${month.key.slice(2, 4)}</text>`;
-      return `${parts}${snow}${label}${monthLabel}`;
+      return `${parts}${hideSnow ? "" : snow}${label}${monthLabel}`;
     }).join("");
     return `<svg class="cashflow-svg" role="img" aria-label="Помесячные выплаты по выпускам Воксис, млн рублей" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}"><defs><pattern id="couponHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="white" stroke-opacity=".75" stroke-width="2"/></pattern></defs><text class="cashflow-axis-title" x="${left}" y="18">млн ₽</text>${grid}${yearDividers}${bars}</svg>`;
   }
@@ -246,6 +246,7 @@
   const offerControls = document.querySelector("#cashflowOffers");
   const legend = document.querySelector("#cashflowLegend");
   const logToggle = document.querySelector("#cashflowLogToggle");
+  const snowToggle = document.querySelector("#cashflowHideSnow");
   const calendar = document.querySelector("#paymentCalendar");
   const calendarRange = document.querySelector("#paymentCalendarRange");
   if (!chart || !status || !offerControls || !legend || !logToggle || !calendar || !calendarRange) return;
@@ -292,7 +293,7 @@
       context.onRedemptions(redemptions);
     }
     const hasPayments = series.months.some((month) => month.segments.length);
-    chart.innerHTML = hasPayments ? renderSvg(series, logToggle.checked) : '<p class="cashflow-empty">Нет подтверждённого календаря выплат для выбранной даты.</p>';
+    chart.innerHTML = hasPayments ? renderSvg(series, logToggle.checked, snowToggle?.checked || false) : '<p class="cashflow-empty">Нет подтверждённого календаря выплат для выбранной даты.</p>';
     const calendarData = buildCalendarMonths(series, date);
     calendar.innerHTML = renderCalendar(calendarData);
     calendarRange.textContent = `${displayDate(date)} — ${displayDate(calendarData.endDate)}`;
@@ -335,6 +336,7 @@
     render();
   });
   logToggle.addEventListener("change", render);
+  snowToggle?.addEventListener("change", render);
   root.VoxysCashflow = {
     update(quotes, date, keyRate, onRedemptions) {
       context = { quotes, date, keyRate, onRedemptions };
