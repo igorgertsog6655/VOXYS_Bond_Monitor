@@ -68,7 +68,8 @@
       const endDate = selectedOffer?.date || quote.maturityDate;
 
       function add(date, kind, perBond, type = kind) {
-        if (!perBond || date <= reportDate || date > endDate) return;
+        if (!perBond || date > endDate || (kind === "coupon"
+          ? date < `${monthKey(reportDate)}-01` : date <= reportDate)) return;
         const key = monthKey(date);
         if (!payments.has(key)) payments.set(key, []);
         payments.get(key).push({ alias, kind, type, date, amount: perBond * count / million });
@@ -76,7 +77,7 @@
 
       const eventDates = [...new Set([
         ...couponRows.map((row) => row.date), ...amortRows.map((row) => row.date), endDate
-      ])].filter((date) => date > reportDate && date <= endDate).sort();
+      ])].filter((date) => date >= `${monthKey(reportDate)}-01` && date <= endDate).sort();
       for (const date of eventDates) {
         for (const coupon of couponRows.filter((row) => row.date === date)) {
           let value = coupon.value;
@@ -88,7 +89,13 @@
               ? (keyRate === null ? null : keyRate + 7)
               : coupon.rate ?? finite(quote.couponPercent);
             if (rate !== null && period > 0 && period < 370) {
-              value = Math.round(remaining * rate * period / 365) / 100;
+              // Past coupons use the nominal before that payment, not today's amortized balance.
+              const couponFace = date <= reportDate
+                ? initialFace !== null
+                  ? Math.max(0, initialFace - amortRows.filter((row) => row.date < date).reduce((sum, row) => sum + row.value, 0))
+                  : currentFace + amortRows.filter((row) => row.date >= date && row.date <= reportDate).reduce((sum, row) => sum + row.value, 0)
+                : remaining;
+              value = Math.round(couponFace * rate * period / 365) / 100;
               estimated = true;
             } else {
               warnings.push(alias);
@@ -96,7 +103,7 @@
           }
           if (value !== null) add(date, "coupon", value);
         }
-        for (const amort of amortRows.filter((row) => row.date === date && date !== selectedOffer?.date)) {
+        for (const amort of amortRows.filter((row) => row.date === date && date > reportDate && date !== selectedOffer?.date)) {
           const principal = Math.min(remaining, amort.value);
           add(date, "principal", principal, "amortization");
           remaining -= principal;
