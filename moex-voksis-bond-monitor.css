@@ -31,8 +31,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .eyebrow::before { content: ""; width: 17px; height: 2px; flex: 0 0 17px; background: #d6a91b; }
 h1 { margin: 0; color: var(--accent-strong); font: 600 39px/1.15 "Lora", Georgia, serif; letter-spacing: 0; }
 .brand-title { line-height: 0; }
-.topbar { position: relative; isolation: isolate; }
-.topbar::before { content: ""; position: absolute; inset: 0 calc((100% - 100vw) / 2); z-index: -1; background: #86bde2 url("./winter-sky.png") center 25% / cover no-repeat; pointer-events: none; }
+.topbar { position: relative; isolation: isolate; padding-bottom: max(160px, 16vw); }
+.topbar::before { content: ""; position: absolute; inset: 0 calc((100% - 100vw) / 2); z-index: -1; background: #29a5df url("./winter-it-landscape.png") center bottom / 100% auto no-repeat; pointer-events: none; }
 .topbar .eyebrow, .topbar .interval > span, .topbar .series-toggle > span { color: #173f2c; }
 .holiday-snow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
 .holiday-snow span { position: absolute; left: var(--x); top: -24px; color: #fff; text-shadow: 0 1px 3px rgba(41, 95, 134, .35); font-size: 15px; opacity: 0; animation: holiday-fall var(--time) var(--delay) linear infinite; }
@@ -40,6 +40,7 @@ h1 { margin: 0; color: var(--accent-strong); font: 600 39px/1.15 "Lora", Georgia
 @keyframes holiday-fall { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 12% { opacity: .65; } 80% { opacity: .5; } 100% { transform: translate(22px, 370px) rotate(150deg); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .holiday-snow { display: none; } }
 @media print { .holiday-snow { display: none; } }
+@media (max-width: 600px) { header.topbar { padding-bottom: 120px; } }
 .brand-logo { display: block; width: 238px; max-width: 100%; height: auto; filter: drop-shadow(0 6px 5px rgba(10, 53, 39, .22)); }
 .toolbar { display: flex; align-items: end; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .icon-button { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--accent-strong); display: inline-grid; place-items: center; cursor: pointer; transition: border-color .15s, background .15s; }
