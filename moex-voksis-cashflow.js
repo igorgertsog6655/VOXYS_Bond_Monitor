@@ -254,6 +254,11 @@
   const legend = document.querySelector("#cashflowLegend");
   const logToggle = document.querySelector("#cashflowLogToggle");
   const snowToggle = document.querySelector("#cashflowHideSnow");
+  if (snowToggle) snowToggle.checked = false;
+  root.addEventListener("pageshow", () => {
+    if (snowToggle) snowToggle.checked = false;
+    render();
+  });
   const calendar = document.querySelector("#paymentCalendar");
   const calendarRange = document.querySelector("#paymentCalendarRange");
   if (!chart || !status || !offerControls || !legend || !logToggle || !calendar || !calendarRange) return;
