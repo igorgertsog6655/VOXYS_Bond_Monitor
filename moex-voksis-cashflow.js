@@ -266,6 +266,7 @@
   const requests = new Map();
   const failedAt = new Map();
   const choices = {};
+  const hiddenIssues = new Set();
   let context = { quotes: [], date: "", keyRate: null };
   try { Object.assign(choices, JSON.parse(localStorage.getItem("voxys-monitor:offer-choices") || "{}")); } catch (_) {}
   for (const offer of offers) {
@@ -289,7 +290,7 @@
     });
     offerControls.innerHTML = activeOffers.map((offer) => `<label class="cashflow-offer"><input type="checkbox" data-offer="${offerId(offer)}" ${choices[offerId(offer)] ? "checked" : ""}><span>${offer.alias} · ${displayDate(offer.date)}</span><a href="${offer.source}" target="_blank" rel="noopener noreferrer" title="Условия оферты" aria-label="Условия оферты ${offer.alias}"><i data-lucide="external-link" aria-hidden="true"></i></a></label>`).join("");
     legend.innerHTML = issues.filter(([alias]) => quotes.some((item) => item.alias === alias && item.placedSize))
-      .map(([alias, color]) => `<span class="cashflow-legend-item"><span class="cashflow-swatch" style="--issue-color:${color}"></span>${alias}</span>`).join("");
+      .map(([alias, color]) => `<label class="cashflow-legend-item"><input type="checkbox" data-issue="${alias}" ${hiddenIssues.has(alias) ? "" : "checked"} style="accent-color:${color}"><span class="cashflow-swatch" style="--issue-color:${color}"></span>${alias}</label>`).join("");
     const series = buildPaymentSeries(quotes, schedules, choices, date, keyRate);
     if (context.onRedemptions) {
       const redemptions = {};
@@ -304,8 +305,17 @@
       }
       context.onRedemptions(redemptions);
     }
-    const hasPayments = series.months.some((month) => month.segments.length);
-    chart.innerHTML = hasPayments ? renderSvg(series, logToggle.checked, snowToggle?.checked || false) : '<p class="cashflow-empty">Нет подтверждённого календаря выплат для выбранной даты.</p>';
+    const chartSeries = {
+      ...series,
+      months: series.months.map((month) => ({
+        ...month, segments: month.segments.filter((item) => !hiddenIssues.has(item.alias))
+      }))
+    };
+    const hasPayments = chartSeries.months.some((month) => month.segments.length);
+    const allHidden = issues.filter(([alias]) => quotes.some((item) => item.alias === alias && item.placedSize))
+      .every(([alias]) => hiddenIssues.has(alias));
+    chart.innerHTML = hasPayments ? renderSvg(chartSeries, logToggle.checked, snowToggle?.checked || false)
+      : `<p class="cashflow-empty">${allHidden ? "Не выбраны выпуски." : "Нет подтверждённого календаря выплат для выбранных выпусков."}</p>`;
     const calendarData = buildCalendarMonths(series, date);
     calendar.innerHTML = renderCalendar(calendarData);
     calendarRange.textContent = `${displayDate(date)} — ${displayDate(calendarData.endDate)}`;
@@ -348,6 +358,13 @@
     render();
   });
   logToggle.addEventListener("change", render);
+  legend.addEventListener("change", (event) => {
+    const alias = event.target.dataset?.issue;
+    if (!issues.some(([name]) => name === alias)) return;
+    if (event.target.checked) hiddenIssues.delete(alias);
+    else hiddenIssues.add(alias);
+    render();
+  });
   snowToggle?.addEventListener("change", render);
   root.VoxysCashflow = {
     update(quotes, date, keyRate, onRedemptions) {
