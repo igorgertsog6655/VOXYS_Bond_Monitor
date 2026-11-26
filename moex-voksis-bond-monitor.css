@@ -191,6 +191,7 @@ tbody tr:last-child td { border-bottom: 0; }
   --price: #7ac49a;
 }
 [data-theme="dark"] body { background: repeating-linear-gradient(0deg, rgba(220, 235, 224, .018) 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, rgba(220, 235, 224, .012) 0 1px, transparent 1px 7px), var(--bg); }
+[data-theme="dark"] .topbar::before { background-image: url("./winter-it-landscape-night.png"); }
 [data-theme="dark"] h1, [data-theme="dark"] .section-head h2, [data-theme="dark"] .payment-calendar-head h3 { color: var(--accent-strong); }
 [data-theme="dark"] .combined-yields-svg { background: var(--panel); fill: var(--muted); }
 [data-theme="dark"] .icon-button:hover, [data-theme="dark"] .series-toggle label:has(input:checked), [data-theme="dark"] .cashflow-offer:has(input:checked) { background: #303d32; color: var(--accent-strong); }
