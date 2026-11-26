@@ -11,7 +11,7 @@
     const step = price ? 1 : 2;
     const min = Math.floor(Math.min(...values, ...(price ? [100] : [])) / step) * step;
     const max = Math.max(min + step, Math.ceil(Math.max(...values, ...(price ? [100] : [])) / step) * step);
-    const width = 1000, height = 220, left = 56, right = 22, top = 16, bottom = 26;
+    const width = 1000, height = 154, left = 56, right = 22, top = 12, bottom = 20;
     const timestamp = (date) => Date.parse(date + "T00:00:00Z");
     const start = timestamp(from), span = Math.max(1, timestamp(to) - start);
     const x = (date) => left + (timestamp(date) - start) / span * (width - left - right);
@@ -54,7 +54,7 @@
     if (!days.length) return heading + '<p class="cashflow-empty">Нет данных об объёмах выбранных выпусков.</p>';
     const start = Date.parse(from + "T00:00:00Z"), end = Date.parse(to + "T00:00:00Z");
     const span = Math.max(1, end - start);
-    const width = 1000, height = 130, left = 56, right = 22, top = 12, bottom = 24;
+    const width = 1000, height = 91, left = 56, right = 22, top = 9, bottom = 17;
     const plotH = height - top - bottom;
     const max = Math.max(1, ...days.map(([, amount]) => amount));
     const x = (time) => left + (time - start) / span * (width - left - right);
