@@ -453,12 +453,13 @@
     if (issueTermRequests.has(secid)) return;
     const saved = readSaved(`issue-terms:${secid}`);
     if (saved?.data) issueTerms.set(secid, saved.data);
-    if (saved?.savedAt && Date.now() - saved.savedAt < 86400000) return;
+    if (saved?.data?.maturityDate && saved?.savedAt && Date.now() - saved.savedAt < 86400000) return;
     const request = getJson(`${apiBase}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=description`).then((json) => {
       const info = Object.fromEntries(blockToRows(json.description).map((row) => [String(row.name).toUpperCase(), row.value]));
       const count = Number(pick(info, ["ISSUESIZE"]));
       const face = Number(pick(info, ["INITIALFACEVALUE"]));
       const data = {
+        maturityDate: pick(info, ["MATDATE"]),
         issueDate: pick(info, ["ISSUEDATE"]),
         emissionAmount: count > 0 && face > 0 ? count * face : null
       };
@@ -936,6 +937,7 @@
     issueTotalNote.textContent = currentReport
       ? `Неполные данные: ${[...missingQuotes].join(", ")}. Каждый итог рассчитан по доступным значениям MOEX.`
       : "Объём в обращении и средневзвешенная ставка доступны только на текущую дату; сумма купонов — по доступным данным MOEX.";
+    updateCombinedYields(lastReportItems, reportDateIso);
     window.VoxysCashflow?.update(quotes, reportDateIso, getKeyRateOn(reportDateIso), (redemptions) => {
       for (const [alias, row] of redemptionCells) {
         const cell = row.children[8];
@@ -945,8 +947,18 @@
     });
   }
 
+  function updateCombinedYields(items, reportDateIso) {
+    const enriched = items.map((item) => ({
+      ...item,
+      maturityDate: issueTerms.get(item.secid)?.maturityDate || item.maturityDate
+        || lastQuotes.find((quote) => quote.alias === item.alias)?.maturityDate,
+      redeemed: item.alias === "Воксис-02"
+    }));
+    window.VoxysYields?.update(enriched, toIsoDate(addDays(reportDateIso, -Number(historyPeriodSelect.value))), reportDateIso);
+  }
+
   function renderReport(items, reportDateIso) {
-    window.VoxysYields?.update(items, toIsoDate(addDays(reportDateIso, -Number(historyPeriodSelect.value))), reportDateIso);
+    updateCombinedYields(items, reportDateIso);
     lastReportItems = items;
     historyCharts.innerHTML = "";
     const visibleItems = items.filter((item) => matchesIssuer(item.alias) && (item.points || []).length);

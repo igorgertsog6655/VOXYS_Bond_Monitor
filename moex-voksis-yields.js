@@ -18,10 +18,14 @@
     for (let v = min; v <= max; v += 2) ticks.push(`<line x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e8df"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${v}%</text>`);
     const cursor = new Date(timestamp(from));
     cursor.setUTCDate(1);
-    if (cursor.getTime() < start) cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     while (cursor.getTime() <= timestamp(to)) {
       const date = cursor.toISOString().slice(0, 10);
-      ticks.push(`<line class="yield-month-divider" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-width="1" vector-effect="non-scaling-stroke"/><text x="${x(date)}" y="${height-12}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`);
+      const next = new Date(cursor);
+      next.setUTCMonth(next.getUTCMonth() + 1);
+      const middle = (Math.max(start, cursor.getTime()) + Math.min(timestamp(to), next.getTime())) / 2;
+      const labelX = left + (middle - start) / span * (width - left - right);
+      if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+      ticks.push(`<text x="${labelX}" y="${height-12}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`);
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     const lines = series.map((item) => {
@@ -53,7 +57,7 @@
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
     for (const item of items) {
-      if (!manuallySelected.has(item.alias) && item.maturityDate && item.maturityDate.slice(0, 10) <= today) {
+      if (!manuallySelected.has(item.alias) && (item.redeemed || (item.maturityDate && item.maturityDate.slice(0, 10) <= today))) {
         hidden.add(item.alias);
       }
     }
