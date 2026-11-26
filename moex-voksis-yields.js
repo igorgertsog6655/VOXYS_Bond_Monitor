@@ -21,7 +21,7 @@
     if (cursor.getTime() < start) cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     while (cursor.getTime() <= timestamp(to)) {
       const date = cursor.toISOString().slice(0, 10);
-      ticks.push(`<text x="${x(date)}" y="${height-12}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`);
+      ticks.push(`<line class="yield-month-divider" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-width="1" vector-effect="non-scaling-stroke"/><text x="${x(date)}" y="${height-12}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`);
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     const lines = series.map((item) => {
