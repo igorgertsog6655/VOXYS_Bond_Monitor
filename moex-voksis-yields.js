@@ -24,10 +24,7 @@
       const date = cursor.toISOString().slice(0, 10);
       const next = new Date(cursor);
       next.setUTCMonth(next.getUTCMonth() + 1);
-      const middle = (Math.max(start, cursor.getTime()) + Math.min(timestamp(to), next.getTime())) / 2;
-      const labelX = left + (middle - start) / span * (width - left - right);
       if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
-      ticks.push(`<text x="${labelX}" y="${height-12}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`);
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     const lines = series.map((item) => {
