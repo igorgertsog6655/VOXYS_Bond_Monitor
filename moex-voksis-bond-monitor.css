@@ -31,7 +31,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .eyebrow::before { content: ""; width: 17px; height: 2px; flex: 0 0 17px; background: #d6a91b; }
 h1 { margin: 0; color: var(--accent-strong); font: 600 39px/1.15 "Lora", Georgia, serif; letter-spacing: 0; }
 .combined-yields-svg { display: block; width: 100%; min-width: 700px; height: auto; background: #fff; font: 12px "Source Sans Pro", Arial, sans-serif; fill: #6d786f; }
-#combinedYieldChart { overflow-x: auto; margin-top: 14px; }
+.combined-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 14px; }
+.combined-chart-panel { min-width: 0; }
+.combined-chart-panel h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
+#combinedYieldChart, #combinedPriceChart, #combinedVolumeChart { overflow-x: auto; }
+#combinedVolumeChart { margin-top: 12px; }
+@media (max-width: 900px) { .combined-chart-grid { grid-template-columns: 1fr; } }
 .combined-yields-svg circle:hover { fill: var(--line-color); stroke: white; stroke-width: 2px; }
 .brand-title { line-height: 0; }
 .topbar { position: relative; isolation: isolate; padding-bottom: max(160px, 16vw); }

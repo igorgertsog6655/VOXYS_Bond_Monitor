@@ -3,19 +3,21 @@
   const hidden = new Set();
   const manuallySelected = new Set();
   let state;
-  function renderChart(items, from, to) {
-    const series = items.map((item) => ({ ...item, points: (item.points || []).filter((p) => p.date >= from && p.date <= to && Number.isFinite(p.ytm)) }));
-    const values = series.flatMap((item) => item.points.map((p) => p.ytm));
+  function renderLineChart(items, from, to, price = false) {
+    const field = price ? "close" : "ytm";
+    const series = items.map((item) => ({ ...item, points: (item.points || []).filter((p) => p.date >= from && p.date <= to && Number.isFinite(p[field])) }));
+    const values = series.flatMap((item) => item.points.map((p) => p[field]));
     if (!values.length) return '<p class="cashflow-empty">Нет данных для выбранных выпусков.</p>';
-    const min = Math.floor(Math.min(...values) / 2) * 2;
-    const max = Math.max(min + 2, Math.ceil(Math.max(...values) / 2) * 2);
+    const step = price ? 1 : 2;
+    const min = Math.floor(Math.min(...values, ...(price ? [100] : [])) / step) * step;
+    const max = Math.max(min + step, Math.ceil(Math.max(...values, ...(price ? [100] : [])) / step) * step);
     const width = 1000, height = 340, left = 56, right = 22, top = 20, bottom = 38;
     const timestamp = (date) => Date.parse(date + "T00:00:00Z");
     const start = timestamp(from), span = Math.max(1, timestamp(to) - start);
     const x = (date) => left + (timestamp(date) - start) / span * (width - left - right);
     const y = (value) => top + (max - value) / (max - min) * (height - top - bottom);
     const ticks = [];
-    for (let v = min; v <= max; v += 2) ticks.push(`<line x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e8df"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${v}%</text>`);
+    for (let v = min; v <= max; v += step) ticks.push(`<line x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="${price && v === 100 ? "#173f2c" : "#e3e8df"}" stroke-width="${price && v === 100 ? 2 : 1}"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${price ? v.toFixed(2).replace(".", ",") : v + "%"}</text>`);
     const cursor = new Date(timestamp(from));
     cursor.setUTCDate(1);
     while (cursor.getTime() <= timestamp(to)) {
@@ -30,12 +32,14 @@
     }
     const lines = series.map((item) => {
       const color = colors[item.alias] || "#777";
-      const path = item.points.map((p, i) => `${i ? "L" : "M"}${x(p.date)} ${y(p.ytm)}`).join(" ");
-      const points = item.points.map((p) => `<circle cx="${x(p.date)}" cy="${y(p.ytm)}" r="6" fill="transparent" stroke="transparent"><title>${item.alias} · ${p.date.split("-").reverse().join(".")} · ${p.ytm.toFixed(2).replace(".", ",")}%</title></circle>`).join("");
+      const path = item.points.map((p, i) => `${i ? "L" : "M"}${x(p.date)} ${y(p[field])}`).join(" ");
+      const points = item.points.map((p) => `<circle cx="${x(p.date)}" cy="${y(p[field])}" r="6" fill="transparent" stroke="transparent"><title>${item.alias} · ${p.date.split("-").reverse().join(".")} · ${p[field].toFixed(2).replace(".", ",")}${price ? "" : "%"}</title></circle>`).join("");
       return `<g style="--line-color:${color}"><path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${points}</g>`;
     }).join("");
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Доходности всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}</svg>`;
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${price ? "Курсы" : "Доходности"} всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}</svg>`;
   }
+  function renderChart(items, from, to) { return renderLineChart(items, from, to); }
+  function renderPrice(items, from, to) { return renderLineChart(items, from, to, true); }
   function dailyVolumes(items, from, to) {
     const days = new Map();
     for (const item of items) {
@@ -86,16 +90,20 @@
     return heading + `<svg class="combined-yields-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Суммарный дневной объём торгов выбранных выпусков">${grid}${bars}</svg>`
       + (missing ? '<p class="volume-heading">Сумма по доступным данным: для части выбранных выпусков объёмы отсутствуют.</p>' : "");
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { colors, renderChart, dailyVolumes, renderVolume };
+  if (typeof module !== "undefined" && module.exports) module.exports = { colors, renderChart, renderPrice, dailyVolumes, renderVolume };
   if (typeof document === "undefined") return;
   const legend = document.querySelector("#combinedYieldLegend");
   const chart = document.querySelector("#combinedYieldChart");
-  if (!legend || !chart) return;
+  const priceChart = document.querySelector("#combinedPriceChart");
+  const volumeChart = document.querySelector("#combinedVolumeChart");
+  if (!legend || !chart || !priceChart || !volumeChart) return;
   function render() {
     if (!state) return;
     legend.innerHTML = state.items.map((item) => `<label class="cashflow-legend-item"><input type="checkbox" data-yield-issue="${item.alias}" ${hidden.has(item.alias) ? "" : "checked"}><span class="cashflow-swatch" style="--issue-color:${colors[item.alias]}"></span>${item.alias}</label>`).join("");
     const selected = state.items.filter((item) => !hidden.has(item.alias));
-    chart.innerHTML = renderChart(selected, state.from, state.to) + renderVolume(selected, state.from, state.to);
+    chart.innerHTML = renderChart(selected, state.from, state.to);
+    priceChart.innerHTML = renderPrice(selected, state.from, state.to);
+    volumeChart.innerHTML = renderVolume(selected, state.from, state.to);
   }
   legend.addEventListener("change", (event) => {
     const alias = event.target.dataset?.yieldIssue;
