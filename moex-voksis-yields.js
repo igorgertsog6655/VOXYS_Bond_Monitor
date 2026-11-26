@@ -80,9 +80,9 @@
         : comparison.current.value < comparison.weekAgo.value ? "#ff1744" : "#75857c";
       const averageDelta = comparison.current.value - comparison.weekAgo.value;
       const deltaLabel = "(" + (averageDelta > 0 ? "+" : "") + averageDelta.toFixed(1).replace(".", ",") + " п.п.)";
-      const deltaX = Math.min(width - right - 4, arrowEndX + 8);
+      const deltaX = Math.min(width - right - 4, arrowEndX + 12);
       const deltaAnchor = deltaX >= width - right - 8 ? "end" : "start";
-      labels.push('<text class="weekly-average-delta" x="' + deltaX + '" y="' + (arrowEndY - 7) + '" text-anchor="' + deltaAnchor + '" fill="' + arrowColor + '">' + deltaLabel + '</text>');
+      labels.push('<text class="weekly-average-delta" x="' + deltaX + '" y="' + (arrowEndY + 18) + '" text-anchor="' + deltaAnchor + '" fill="' + arrowColor + '">' + deltaLabel + '</text>');
       const formatValue = (value) => `${value.toFixed(1).replace(".", ",")}${price ? "" : "%"}`;
       const range = (className, px, highValue, lowValue) => {
         const highY = y(highValue), lowY = y(lowValue);

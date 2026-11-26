@@ -32,7 +32,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 h1 { margin: 0; color: var(--accent-strong); font: 600 39px/1.15 "Lora", Georgia, serif; letter-spacing: 0; }
 .combined-yields-svg { display: block; width: 100%; min-width: 700px; height: auto; background: #fff; font: 12px "Source Sans Pro", Arial, sans-serif; fill: #6d786f; }
 .weekly-range-label { font-size: 10px; font-weight: 600; }
-.weekly-average-delta { font-size: 10px; font-weight: 700; }
+.weekly-average-delta { font-size: 10px; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
 .combined-chart-scroll { overflow-x: auto; margin-top: 14px; }
 .combined-chart-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; min-width: 700px; }
 .combined-chart-panel { min-width: 0; }
