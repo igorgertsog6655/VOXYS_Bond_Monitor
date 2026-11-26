@@ -995,12 +995,17 @@
   }
 
   function updateCombinedYields(items, reportDateIso) {
-    const enriched = items.map((item) => ({
-      ...item,
-      maturityDate: issueTerms.get(item.secid)?.maturityDate || item.maturityDate
-        || lastQuotes.find((quote) => quote.alias === item.alias)?.maturityDate,
-      redeemed: item.alias === "Воксис-02"
-    }));
+    const enriched = items.map((item) => {
+      const quote = lastQuotes.find((entry) => entry.alias === item.alias);
+      const volumeWeight = quote?.placedSize > 0 && quote?.faceValue > 0
+        ? quote.placedSize * quote.faceValue : null;
+      return {
+        ...item,
+        maturityDate: issueTerms.get(item.secid)?.maturityDate || item.maturityDate || quote?.maturityDate,
+        volumeWeight,
+        redeemed: item.alias === "Воксис-02"
+      };
+    });
     window.VoxysYields?.update(enriched, toIsoDate(addDays(reportDateIso, -Number(historyPeriodSelect.value))), reportDateIso);
   }
 
