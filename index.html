@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Облигации Воксис | Монитор MOEX</title>
   <link rel="icon" type="image/svg+xml" href="./voxys-favicon.svg">
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261126-weekly-range">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261126-dark-mode">
 </head>
 <body>
   <main class="app">
@@ -50,6 +50,9 @@
         <h1 class="brand-title"><img class="brand-logo" src="./voxys-logo-snowdrifts.png" width="2176" height="728" alt="VOXYS"></h1>
       </div>
       <div class="toolbar" aria-label="Управление отчетом">
+        <button class="icon-button theme-toggle" id="themeToggle" type="button" title="Включить тёмную тему" aria-label="Включить тёмную тему" aria-pressed="false">
+          <i data-lucide="moon" aria-hidden="true"></i>
+        </button>
         <button class="icon-button" id="refreshButton" type="button" title="Обновить сейчас" aria-label="Обновить сейчас">
           <i data-lucide="refresh-cw" aria-hidden="true"></i>
         </button>
@@ -202,6 +205,6 @@
   <script src="./assets/lucide.min.js" defer></script>
   <script src="./moex-voksis-cashflow.js?v=20261120-issuefilter" defer></script>
   <script src="./moex-voksis-yields.js?v=20261126-comparison-range" defer></script>
-  <script src="./moex-voksis-bond-monitor.js?v=20261126-weekly-weights" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261126-dark-mode" defer></script>
 </body>
 </html>

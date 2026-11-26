@@ -175,6 +175,44 @@ tbody tr:last-child td { border-bottom: 0; }
 .footnote a { color: var(--accent); text-underline-offset: 2px; }
 .copyright { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 600; }
 .empty { color: var(--muted); }
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e6ece7;
+  --muted: #a5b1aa;
+  --line: #39463f;
+  --panel: #202923;
+  --bg: #151c18;
+  --accent: #a4bd83;
+  --accent-strong: #c4d9b5;
+  --warn: #d9b458;
+  --bad: #e07d73;
+  --good: #76c294;
+  --yield: #e39a78;
+  --price: #7ac49a;
+}
+[data-theme="dark"] body { background: repeating-linear-gradient(0deg, rgba(220, 235, 224, .018) 0 1px, transparent 1px 6px), repeating-linear-gradient(90deg, rgba(220, 235, 224, .012) 0 1px, transparent 1px 7px), var(--bg); }
+[data-theme="dark"] h1, [data-theme="dark"] .section-head h2, [data-theme="dark"] .payment-calendar-head h3 { color: var(--accent-strong); }
+[data-theme="dark"] .combined-yields-svg { background: var(--panel); fill: var(--muted); }
+[data-theme="dark"] .icon-button:hover, [data-theme="dark"] .series-toggle label:has(input:checked), [data-theme="dark"] .cashflow-offer:has(input:checked) { background: #303d32; color: var(--accent-strong); }
+[data-theme="dark"] .issuer-tabs button[aria-selected="true"], [data-theme="dark"] .issuer-tabs button:hover { color: var(--accent-strong); }
+[data-theme="dark"] .report-row { background: repeating-linear-gradient(135deg, rgba(220, 235, 224, .012) 0 1px, transparent 1px 9px), var(--panel); }
+[data-theme="dark"] .report-row, [data-theme="dark"] .table-wrap, [data-theme="dark"] .cashflow-chart { box-shadow: 0 7px 22px rgba(0, 0, 0, .2); }
+[data-theme="dark"] .metric-card, [data-theme="dark"] .metric-card:nth-child(even):not(.wide), [data-theme="dark"] th, [data-theme="dark"] td { border-color: #39463f; }
+[data-theme="dark"] th { background: #29342d; }
+[data-theme="dark"] tbody tr:hover td { background: #2a352d; }
+[data-theme="dark"] .issue-total td { background: #2d3b30; border-color: #50634f; }
+[data-theme="dark"] .cashflow-offer:has(input:checked) { border-color: #687d60; }
+[data-theme="dark"] .cashflow-key-hatch { background: repeating-linear-gradient(45deg, #6579a4 0 3px, #39434b 3px 5px); }
+[data-theme="dark"] .cashflow-grid line { stroke: #46524a; }
+[data-theme="dark"] .cashflow-year-divider { stroke: #77847a; }
+[data-theme="dark"] .payment-calendar-weekday { background: #2d392f; }
+[data-theme="dark"] .payment-calendar-blank, [data-theme="dark"] .payment-calendar-day.is-outside { background: #29332d; }
+[data-theme="dark"] .payment-calendar-day.has-payment { background: #222d26; }
+[data-theme="dark"] .payment-calendar-day.is-day-off { background: #432d32; }
+[data-theme="dark"] .payment-calendar-weekday:nth-child(6), [data-theme="dark"] .payment-calendar-weekday:nth-child(7) { background: #432d32; }
+[data-theme="dark"] .payment-calendar-entry { background: color-mix(in srgb, var(--issue-color) 19%, #202923); }
+[data-theme="dark"] .volume-tooltip { background: #d7e6d9; color: #17221b; }
+[data-theme="dark"] .combined-yields-svg line:not([stroke]), [data-theme="dark"] .cashflow-svg line:not([stroke]) { stroke: #46524a; }
 @media (max-width: 1100px) { .topbar { align-items: start; flex-direction: column; gap: 20px; } .toolbar { justify-content: flex-start; } }
 @media (max-width: 900px) { .report-row { grid-template-columns: 1fr; } .metrics-panel { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .metric-card.wide { grid-column: auto; } .metric-card:nth-child(even):not(.wide) { border-left: 0; padding-left: 0; } }
 @media (max-width: 600px) { .app { width: calc(100% - 28px); padding-bottom: 24px; } .topbar { padding: 20px 0 15px; } h1 { font-size: 30px; } .toolbar { width: 100%; gap: 9px; } .toolbar .interval { flex: 1 1 130px; } .toolbar .interval select, .toolbar .interval input { width: 100%; } .series-toggle { order: 2; width: 100%; align-items: center; } .series-toggle > span { margin-left: 0; } .status-strip { align-items: start; flex-direction: column; gap: 4px; margin: 6px 0 20px; } .section-head { align-items: start; flex-direction: column; gap: 7px; } .section-head h2 { font-size: 20px; } #historyStatus { text-align: left; } .report-row { padding: 16px 14px; gap: 13px; } .card-title { font-size: 17px; } .secid { font-size: 10px; } .report-row canvas { height: 250px; } .metric-grid { grid-template-columns: 1fr; } .metric-card.wide { grid-column: 1; } .table-section, .cashflow-section { margin-top: 26px; } .cashflow-controls { align-items: start; flex-direction: column; } }

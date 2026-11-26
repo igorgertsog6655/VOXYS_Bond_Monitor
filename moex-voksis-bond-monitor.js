@@ -33,6 +33,7 @@
   const totalCouponAmount = document.querySelector("#totalCouponAmount");
   const issueTotalNote = document.querySelector("#issueTotalNote");
   const refreshButton = document.querySelector("#refreshButton");
+  const themeToggle = document.querySelector("#themeToggle");
   const intervalSelect = document.querySelector("#intervalSelect");
   const historyPeriodSelect = document.querySelector("#historyPeriodSelect");
   const historyPriceToggle = document.querySelector("#historyPriceToggle");
@@ -1246,6 +1247,25 @@
       renderReport(lastReportItems, reportDateInput.value || todayIso());
     });
   });
+  if (themeToggle && document.documentElement) {
+    function applyTheme(theme) {
+      const dark = theme === "dark";
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      themeToggle.setAttribute("aria-pressed", String(dark));
+      themeToggle.setAttribute("aria-label", dark ? "Включить светлую тему" : "Включить тёмную тему");
+      themeToggle.title = dark ? "Включить светлую тему" : "Включить тёмную тему";
+      themeToggle.innerHTML = `<i data-lucide="${dark ? "sun" : "moon"}" aria-hidden="true"></i>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+    let savedTheme = "light";
+    try { savedTheme = localStorage.getItem("voxys-monitor:theme") || "light"; } catch (_) {}
+    applyTheme(savedTheme);
+    themeToggle.addEventListener("click", () => {
+      const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      try { localStorage.setItem("voxys-monitor:theme", nextTheme); } catch (_) {}
+      applyTheme(nextTheme);
+    });
+  }
   if (window.lucide) window.lucide.createIcons();
   refreshButton.addEventListener("click", refreshAll);
   intervalSelect.addEventListener("change", restartTimer);
