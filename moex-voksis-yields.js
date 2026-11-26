@@ -42,15 +42,18 @@
     for (const item of items) {
       for (const point of item.points || []) {
         if (point.date < from || point.date > to || !Number.isFinite(point.turnoverRub) || point.turnoverRub < 0) continue;
-        days.set(point.date, (days.get(point.date) || 0) + point.turnoverRub);
+        const totals = days.get(point.date) || { total: 0, primary: 0 };
+        totals.total += point.turnoverRub;
+        totals.primary += Number.isFinite(point.primaryTurnoverRub) ? point.primaryTurnoverRub : 0;
+        days.set(point.date, totals);
       }
     }
-    return [...days].sort(([a], [b]) => a.localeCompare(b));
+    return [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, totals]) => [date, totals.total, Math.min(totals.total, totals.primary)]);
   }
 
   function renderVolume(items, from, to) {
     const days = dailyVolumes(items, from, to);
-    const heading = '<h3 class="combined-chart-title">Суммарный объём торгов за день, млн ₽</h3>';
+    const heading = '<h3 class="combined-chart-title">Суммарный объём торгов за день, млн ₽</h3><p class="volume-heading"><span style="color:#5d8979">■</span> Вторичные торги &nbsp; <span style="color:#d1a029">■</span> Первичное размещение</p>';
     if (!days.length) return heading + '<p class="cashflow-empty">Нет данных об объёмах выбранных выпусков.</p>';
     const start = Date.parse(from + "T00:00:00Z"), end = Date.parse(to + "T00:00:00Z");
     const span = Math.max(1, end - start);
@@ -80,11 +83,15 @@
       cursor.setUTCMonth(cursor.getUTCMonth()+1);
     }
     const barWidth = Math.max(1, Math.min(12, (width-left-right)*86400000/span*.75));
-    const bars = days.map(([date, amount]) => {
+    const bars = days.map(([date, amount, primary]) => {
       const center = x(Date.parse(date+"T00:00:00Z"));
       const barLeft = Math.max(left, center-barWidth/2);
       const barRight = Math.min(width-right, center+barWidth/2);
-      return `<rect x="${barLeft}" y="${y(amount)}" width="${Math.max(0,barRight-barLeft)}" height="${y(0)-y(amount)}" fill="#5d8979"><title>${date.split("-").reverse().join(".")} · ${fmt.format(amount)} ₽</title></rect>`;
+      const barW = Math.max(0,barRight-barLeft);
+      const primaryHeight = y(0)-y(primary);
+      const totalHeight = y(0)-y(amount);
+      const dateLabel = date.split("-").reverse().join(".");
+      return `<g><rect x="${barLeft}" y="${y(amount)}" width="${barW}" height="${Math.max(0,totalHeight-primaryHeight)}" fill="#5d8979"/><rect x="${barLeft}" y="${y(primary)}" width="${barW}" height="${primaryHeight}" fill="#d1a029"/><title>${dateLabel} · Всего: ${fmt.format(amount)} ₽ · первичное размещение: ${fmt.format(primary)} ₽</title></g>`;
     }).join("");
     const missing = items.some((item) => !(item.points || []).some((p) => p.date >= from && p.date <= to && Number.isFinite(p.turnoverRub)));
     return heading + `<svg class="combined-yields-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Суммарный дневной объём торгов выбранных выпусков">${grid}${bars}</svg>`

@@ -490,13 +490,19 @@
       lastError = error;
     }
 
-    const toPoints = (rows) => rows.map((item) => ({
+    const placementBoards = new Set(["PSBB", "PSAU", "PACT", "PACY", "PAEU", "PAGB", "PAUS", "PAYT", "PTEQ"]);
+    const toPoints = (rows) => rows.map((item) => {
+      const boardId = String(pick(item, ["BOARDID"]) || "").toUpperCase();
+      const turnoverRub = pick(item, ["VALUE"]) == null ? null : Number(item.VALUE);
+      return ({
         date: pick(item, ["TRADEDATE"]),
         close: Number(pick(item, ["CLOSE", "LEGALCLOSEPRICE", "WAPRICE", "MARKETPRICE2", "PRICE"]) ?? NaN),
         ytm: Number(pick(item, ["YIELDCLOSE", "YIELDATWAP", "YIELD", "YIELDTOMATURITY", "EFFECTIVEYIELD"]) ?? NaN),
-        turnoverRub: pick(item, ["VALUE"]) == null ? null : Number(item.VALUE),
+        turnoverRub,
+        primaryTurnoverRub: placementBoards.has(boardId) && Number.isFinite(turnoverRub) ? turnoverRub : 0,
         value: Number(pick(item, ["VALUE", "VOLUME", "NUMTRADES"]))
-      }))
+      });
+    })
       .filter((item) => item.date && Number.isFinite(item.close))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     let points = toPoints(historyRows);
