@@ -3,6 +3,31 @@
   const hidden = new Set();
   const manuallySelected = new Set();
   let state;
+  function weeklyComparison(items, to, field) {
+    const records = items.map((item) => {
+      const points = (item.points || []).filter((point) => point.date <= to && Number.isFinite(point[field]))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const current = points[points.length - 1];
+      if (!current) return null;
+      const targetDate = new Date(Date.parse(`${current.date}T00:00:00Z`) - 7 * 86400000).toISOString().slice(0, 10);
+      const weekAgo = [...points].reverse().find((point) => point.date <= targetDate);
+      return { item, current, weekAgo, weight: Number(item.volumeWeight) };
+    }).filter(Boolean);
+    const weightedAverage = (entries, getPoint) => {
+      const weighted = entries.filter((entry) => getPoint(entry) && Number.isFinite(entry.weight) && entry.weight > 0);
+      const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+      if (!totalWeight) return null;
+      const value = weighted.reduce((sum, entry) => sum + getPoint(entry)[field] * entry.weight, 0) / totalWeight;
+      const time = weighted.reduce((sum, entry) => sum + Date.parse(`${getPoint(entry).date}T00:00:00Z`) * entry.weight, 0) / totalWeight;
+      return { value, date: new Date(time).toISOString().slice(0, 10) };
+    };
+    const weekly = records.filter((entry) => entry.weekAgo);
+    return {
+      current: weightedAverage(records, (entry) => entry.current),
+      weekAgo: weightedAverage(weekly, (entry) => entry.weekAgo),
+      weekValues: weekly.map((entry) => ({ item: entry.item, point: entry.weekAgo, value: entry.weekAgo[field] }))
+    };
+  }
   function renderLineChart(items, from, to, price = false) {
     const field = price ? "close" : "ytm";
     const series = items.map((item) => ({ ...item, points: (item.points || []).filter((p) => p.date >= from && p.date <= to && Number.isFinite(p[field])) }));
@@ -38,6 +63,24 @@
       return point ? { item, point, value: point[field], color: colors[item.alias] || "#777" } : null;
     }).filter(Boolean);
     const labels = [];
+    const overlays = [];
+    const comparison = weeklyComparison(items, to, field);
+    if (comparison.weekAgo && comparison.current && comparison.weekAgo.date >= from) {
+      const low = comparison.weekValues.reduce((best, current) => current.value < best.value ? current : best);
+      const high = comparison.weekValues.reduce((best, current) => current.value > best.value ? current : best);
+      const rangeX = x(comparison.weekAgo.date);
+      const rangeTop = y(high.value), rangeBottom = y(low.value);
+      const arrowStartX = x(comparison.weekAgo.date), arrowStartY = y(comparison.weekAgo.value);
+      const arrowEndX = x(comparison.current.date), arrowEndY = y(comparison.current.value);
+      const markerId = price ? "weekly-average-arrow-price" : "weekly-average-arrow-yield";
+      const formatValue = (value) => `${value.toFixed(1).replace(".", ",")}${price ? "" : "%"}`;
+      overlays.push(`<defs><marker id="${markerId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#253c31"/></marker></defs>`);
+      overlays.push(`<line x1="${rangeX}" x2="${rangeX}" y1="${rangeTop}" y2="${rangeBottom}" stroke="#75857c" stroke-width="1.5" stroke-dasharray="3 3"/><line x1="${rangeX-4}" x2="${rangeX+4}" y1="${rangeTop}" y2="${rangeTop}" stroke="#75857c"/><line x1="${rangeX-4}" x2="${rangeX+4}" y1="${rangeBottom}" y2="${rangeBottom}" stroke="#75857c"/>`);
+      const highLabelY = Math.max(top+9,rangeTop-3);
+      const lowLabelY = Math.min(height-bottom-1,rangeBottom+10);
+      overlays.push(`<text class="weekly-range-label" x="${rangeX+6}" y="${highLabelY}" fill="${colors[high.item.alias] || "#777"}" text-anchor="start">${formatValue(high.value)}</text>${low.item.alias !== high.item.alias ? `<text class="weekly-range-label" x="${rangeX+6}" y="${lowLabelY}" fill="${colors[low.item.alias] || "#777"}" text-anchor="start">${formatValue(low.value)}</text>` : ""}`);
+      overlays.push(`<line class="weekly-average-arrow" x1="${arrowStartX}" y1="${arrowStartY}" x2="${arrowEndX}" y2="${arrowEndY}" stroke="#253c31" stroke-width="1.8" marker-end="url(#${markerId})"><title>Средневзвешенное значение: ${formatValue(comparison.weekAgo.value)} → ${formatValue(comparison.current.value)}</title></line><circle cx="${arrowStartX}" cy="${arrowStartY}" r="3.5" fill="white" stroke="#253c31" stroke-width="1.5"/><circle cx="${arrowEndX}" cy="${arrowEndY}" r="3.5" fill="#253c31"/>`);
+    }
     if (endpoints.length) {
       const highest = endpoints.reduce((best, current) => current.value > best.value ? current : best);
       const lowest = endpoints.reduce((best, current) => current.value < best.value ? current : best);
@@ -52,7 +95,7 @@
       addLabel(highest, "max");
       if (lowest.item.alias !== highest.item.alias) addLabel(lowest, "min");
     }
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${price ? "Курсы" : "Доходности"} всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}${labels.join("")}</svg>`;
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${price ? "Курсы" : "Доходности"} всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}${overlays.join("")}${labels.join("")}</svg>`;
   }
   function renderChart(items, from, to) { return renderLineChart(items, from, to); }
   function renderPrice(items, from, to) { return renderLineChart(items, from, to, true); }
@@ -116,7 +159,7 @@
     return heading + `<svg class="combined-yields-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Суммарный дневной объём торгов выбранных выпусков">${grid}${bars}</svg>`
       + (missing ? '<p class="volume-heading">Сумма по доступным данным: для части выбранных выпусков объёмы отсутствуют.</p>' : "");
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { colors, renderChart, renderPrice, dailyVolumes, renderVolume };
+  if (typeof module !== "undefined" && module.exports) module.exports = { colors, renderChart, renderPrice, dailyVolumes, renderVolume, weeklyComparison };
   if (typeof document === "undefined") return;
   const legend = document.querySelector("#combinedYieldLegend");
   const chart = document.querySelector("#combinedYieldChart");
