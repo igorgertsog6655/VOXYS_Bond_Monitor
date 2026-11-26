@@ -490,7 +490,7 @@
       lastError = error;
     }
 
-    const placementBoards = new Set(["PSBB", "PSAU", "PACT", "PACY", "PAEU", "PAGB", "PAUS", "PAYT", "PTEQ"]);
+    const placementBoards = new Set(["PSAU"]);
     const toPoints = (rows) => rows.map((item) => {
       const boardId = String(pick(item, ["BOARDID"]) || "").toUpperCase();
       const turnoverRub = pick(item, ["VALUE"]) == null ? null : Number(item.VALUE);
@@ -511,15 +511,22 @@
     const issueDate = String(pick(snapshot?.info, ["ISSUEDATE"]) || "").slice(0, 10);
     const placementByDate = new Map();
     if (!hasPrimaryHistory && issueDate && issueDate >= fromIso && issueDate <= reportDateIso) {
-      const placementUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/PSBB/securities/${encodeURIComponent(security.secid)}.json?${params}`;
-      try {
-        const placementRows = await getPagedRows(placementUrl, "history");
+      const placementBoards = ["PSAU"];
+      const placementPages = await Promise.all(placementBoards.map(async (placementBoard) => {
+        const placementUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${placementBoard}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
+        try {
+          return await getPagedRows(placementUrl, "history");
+        } catch (_) {
+          return [];
+        }
+      }));
+      for (const placementRows of placementPages) {
         for (const item of placementRows) {
           const date = pick(item, ["TRADEDATE"]);
           const amount = Number(pick(item, ["VALUE"]));
           if (date && Number.isFinite(amount) && amount > 0) placementByDate.set(date, (placementByDate.get(date) || 0) + amount);
         }
-      } catch (_) {}
+      }
     }
     const savedQuote = lastQuotes.find((item) => item.alias === alias && !item.error);
     const board = snapshot?.info.BOARDID || savedQuote?.board || security.primaryBoard;
