@@ -41,7 +41,7 @@
     if (endpoints.length) {
       const highest = endpoints.reduce((best, current) => current.value > best.value ? current : best);
       const lowest = endpoints.reduce((best, current) => current.value < best.value ? current : best);
-      const formatValue = (value) => `${value.toFixed(2).replace(".", ",")}${price ? "" : "%"}`;
+      const formatValue = (value) => `${value.toFixed(1).replace(".", ",")}${price ? "" : "%"}`;
       const addLabel = (entry, extreme) => {
         const px = x(entry.point.date), py = y(entry.value);
         const anchor = px > width - right - 76 ? "end" : px < left + 76 ? "start" : "middle";
