@@ -33,7 +33,26 @@
       const points = item.points.map((p) => `<circle cx="${x(p.date)}" cy="${y(p[field])}" r="6" fill="transparent" stroke="transparent"><title>${item.alias} · ${p.date.split("-").reverse().join(".")} · ${p[field].toFixed(2).replace(".", ",")}${price ? "" : "%"}</title></circle>`).join("");
       return `<g style="--line-color:${color}"><path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${points}</g>`;
     }).join("");
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${price ? "Курсы" : "Доходности"} всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}</svg>`;
+    const endpoints = series.map((item) => {
+      const point = item.points[item.points.length - 1];
+      return point ? { item, point, value: point[field], color: colors[item.alias] || "#777" } : null;
+    }).filter(Boolean);
+    const labels = [];
+    if (endpoints.length) {
+      const highest = endpoints.reduce((best, current) => current.value > best.value ? current : best);
+      const lowest = endpoints.reduce((best, current) => current.value < best.value ? current : best);
+      const formatValue = (value) => `${value.toFixed(2).replace(".", ",")}${price ? "" : "%"}`;
+      const addLabel = (entry, extreme) => {
+        const px = x(entry.point.date), py = y(entry.value);
+        const anchor = px > width - right - 76 ? "end" : px < left + 76 ? "start" : "middle";
+        const labelX = anchor === "end" ? px - 6 : anchor === "start" ? px + 6 : px;
+        const labelY = extreme === "max" ? Math.max(top + 10, py - 8) : Math.min(height - bottom - 2, py + 15);
+        labels.push(`<circle cx="${px}" cy="${py}" r="3.5" fill="${entry.color}"/><text class="combined-endpoint-label" data-series="${entry.item.alias}" data-extreme="${extreme}" x="${labelX}" y="${labelY}" text-anchor="${anchor}" fill="${entry.color}">${formatValue(entry.value)}</text>`);
+      };
+      addLabel(highest, "max");
+      if (lowest.item.alias !== highest.item.alias) addLabel(lowest, "min");
+    }
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${price ? "Курсы" : "Доходности"} всех выбранных выпусков" class="combined-yields-svg">${ticks.join("")}${lines}${labels.join("")}</svg>`;
   }
   function renderChart(items, from, to) { return renderLineChart(items, from, to); }
   function renderPrice(items, from, to) { return renderLineChart(items, from, to, true); }
