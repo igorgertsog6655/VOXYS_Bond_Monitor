@@ -56,7 +56,7 @@
       const color = colors[item.alias] || "#777";
       const path = item.points.map((p, i) => `${i ? "L" : "M"}${x(p.date)} ${y(p[field])}`).join(" ");
       const points = item.points.map((p) => `<circle cx="${x(p.date)}" cy="${y(p[field])}" r="6" fill="transparent" stroke="transparent"><title>${item.alias} · ${p.date.split("-").reverse().join(".")} · ${p[field].toFixed(2).replace(".", ",")}${price ? "" : "%"}</title></circle>`).join("");
-      return `<g style="--line-color:${color}"><path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${points}</g>`;
+      return `<g style="--line-color:${color}"><path class="issue-series-line" d="${path}" fill="none" stroke="${color}" stroke-width="4" stroke-opacity="0.58" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>${points}</g>`;
     }).join("");
     const endpoints = series.map((item) => {
       const point = item.points[item.points.length - 1];
