@@ -503,13 +503,27 @@
         value: Number(pick(item, ["VALUE", "VOLUME", "NUMTRADES"]))
       });
     })
-      .filter((item) => item.date && Number.isFinite(item.close))
+      .filter((item) => item.date && (Number.isFinite(item.close) || Number.isFinite(item.turnoverRub)))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     let points = toPoints(historyRows);
-    if (!points.length) await infoRequest;
+    await infoRequest;
+    const hasPrimaryHistory = historyRows.some((item) => placementBoards.has(String(pick(item, ["BOARDID"]) || "").toUpperCase()));
+    const issueDate = String(pick(snapshot?.info, ["ISSUEDATE"]) || "").slice(0, 10);
+    const placementByDate = new Map();
+    if (!hasPrimaryHistory && issueDate && issueDate >= fromIso && issueDate <= reportDateIso) {
+      const placementUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/PSBB/securities/${encodeURIComponent(security.secid)}.json?${params}`;
+      try {
+        const placementRows = await getPagedRows(placementUrl, "history");
+        for (const item of placementRows) {
+          const date = pick(item, ["TRADEDATE"]);
+          const amount = Number(pick(item, ["VALUE"]));
+          if (date && Number.isFinite(amount) && amount > 0) placementByDate.set(date, (placementByDate.get(date) || 0) + amount);
+        }
+      } catch (_) {}
+    }
     const savedQuote = lastQuotes.find((item) => item.alias === alias && !item.error);
     const board = snapshot?.info.BOARDID || savedQuote?.board || security.primaryBoard;
-    if (!points.length && board) {
+    if (!points.some((item) => Number.isFinite(item.close)) && board) {
       const boardUrl = `${apiBase}/history/engines/stock/markets/bonds/boards/${encodeURIComponent(board)}/securities/${encodeURIComponent(security.secid)}.json?${params}`;
       try {
         points = toPoints(await getPagedRows(boardUrl, "history"));
@@ -518,6 +532,16 @@
         lastError = error;
       }
     }
+    for (const [date, amount] of placementByDate) {
+      const point = points.find((item) => item.date === date);
+      if (point) {
+        point.turnoverRub = (Number.isFinite(point.turnoverRub) ? point.turnoverRub : 0) + amount;
+        point.primaryTurnoverRub = (point.primaryTurnoverRub || 0) + amount;
+      } else {
+        points.push({ date, close: NaN, ytm: NaN, turnoverRub: amount, primaryTurnoverRub: amount, value: NaN });
+      }
+    }
+    points.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     if (lastError && !points.length) throw lastError;
 
     const info = snapshot?.info;

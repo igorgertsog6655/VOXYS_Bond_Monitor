@@ -57,7 +57,7 @@
     if (!days.length) return heading + '<p class="cashflow-empty">Нет данных об объёмах выбранных выпусков.</p>';
     const start = Date.parse(from + "T00:00:00Z"), end = Date.parse(to + "T00:00:00Z");
     const span = Math.max(1, end - start);
-    const width = 1000, height = 91, left = 56, right = 22, top = 9, bottom = 17;
+    const width = 1000, height = 106, left = 56, right = 22, top = 9, bottom = 30;
     const plotH = height - top - bottom;
     const max = Math.max(1, ...days.map(([, amount]) => amount));
     const x = (time) => left + (time - start) / span * (width - left - right);
@@ -79,7 +79,7 @@
       if (cursor.getTime() >= start) grid += `<line x1="${x(cursor.getTime())}" x2="${x(cursor.getTime())}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7"/>`;
       const middle = (Math.max(start, cursor.getTime()) + Math.min(end, next.getTime())) / 2;
       const date = cursor.toISOString();
-      grid += `<text x="${x(middle)}" y="${height-10}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`;
+      grid += `<text class="volume-month-label" x="${x(middle)}" y="${height-8}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`;
       cursor.setUTCMonth(cursor.getUTCMonth()+1);
     }
     const barWidth = Math.max(1, Math.min(12, (width-left-right)*86400000/span*.75));
