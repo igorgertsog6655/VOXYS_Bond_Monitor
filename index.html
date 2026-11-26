@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Облигации Воксис | Монитор MOEX</title>
   <link rel="icon" type="image/svg+xml" href="./voxys-favicon.svg">
-  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261119-landscape">
+  <link rel="stylesheet" href="./moex-voksis-bond-monitor.css?v=20261126-yields">
 </head>
 <body>
   <main class="app">
@@ -114,6 +114,11 @@
       <div class="report-list" id="historyCharts"></div>
     </section>
 
+    <section class="table-section" aria-label="Сравнение доходностей">
+      <div class="section-head"><h2>Доходности выпусков</h2></div>
+      <div id="combinedYieldLegend" class="cashflow-legend"></div>
+      <div id="combinedYieldChart"></div>
+    </section>
     <section class="table-section" aria-label="Детальные данные">
       <div class="section-head">
         <div>
@@ -189,6 +194,7 @@
 
   <script src="./assets/lucide.min.js" defer></script>
   <script src="./moex-voksis-cashflow.js?v=20261120-issuefilter" defer></script>
-  <script src="./moex-voksis-bond-monitor.js?v=20261118-line-tooltip" defer></script>
+  <script src="./moex-voksis-yields.js?v=20261126" defer></script>
+  <script src="./moex-voksis-bond-monitor.js?v=20261126-yields" defer></script>
 </body>
 </html>

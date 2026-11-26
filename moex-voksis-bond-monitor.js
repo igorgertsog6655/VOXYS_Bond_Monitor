@@ -946,6 +946,7 @@
   }
 
   function renderReport(items, reportDateIso) {
+    window.VoxysYields?.update(items, toIsoDate(addDays(reportDateIso, -Number(historyPeriodSelect.value))), reportDateIso);
     lastReportItems = items;
     historyCharts.innerHTML = "";
     const visibleItems = items.filter((item) => matchesIssuer(item.alias) && (item.points || []).length);
@@ -1109,6 +1110,7 @@
     else {
       historyCharts.innerHTML = "";
       lastReportItems = [];
+      window.VoxysYields?.update([], toIsoDate(addDays(reportDateIso, -Number(days))), reportDateIso);
     }
 
     let failures = 0;
