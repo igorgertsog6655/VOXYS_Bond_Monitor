@@ -73,13 +73,24 @@
       const arrowStartX = x(comparison.weekAgo.date), arrowStartY = y(comparison.weekAgo.value);
       const arrowEndX = x(comparison.current.date), arrowEndY = y(comparison.current.value);
       const markerId = price ? "weekly-average-arrow-price" : "weekly-average-arrow-yield";
+      const arrowColor = comparison.current.value > comparison.weekAgo.value ? "#27804d"
+        : comparison.current.value < comparison.weekAgo.value ? "#b33948" : "#75857c";
       const formatValue = (value) => `${value.toFixed(1).replace(".", ",")}${price ? "" : "%"}`;
-      overlays.push(`<defs><marker id="${markerId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="#253c31"/></marker></defs>`);
-      overlays.push(`<line x1="${rangeX}" x2="${rangeX}" y1="${rangeTop}" y2="${rangeBottom}" stroke="#75857c" stroke-width="1.5" stroke-dasharray="3 3"/><line x1="${rangeX-4}" x2="${rangeX+4}" y1="${rangeTop}" y2="${rangeTop}" stroke="#75857c"/><line x1="${rangeX-4}" x2="${rangeX+4}" y1="${rangeBottom}" y2="${rangeBottom}" stroke="#75857c"/>`);
+      const range = (className, px, highValue, lowValue) => {
+        const highY = y(highValue), lowY = y(lowValue);
+        return `<g class="${className}" stroke="#75857c"><line x1="${px}" x2="${px}" y1="${highY}" y2="${lowY}" stroke-width="1.5" stroke-dasharray="3 3"/><line x1="${px-4}" x2="${px+4}" y1="${highY}" y2="${highY}"/><line x1="${px-4}" x2="${px+4}" y1="${lowY}" y2="${lowY}"/></g>`;
+      };
+      overlays.push(`<defs><marker id="${markerId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L6,3 z" fill="${arrowColor}"/></marker></defs>`);
+      overlays.push(range("comparison-range-week", rangeX, high.value, low.value));
+      if (endpoints.length) {
+        const currentHigh = Math.max(...endpoints.map((entry) => entry.value));
+        const currentLow = Math.min(...endpoints.map((entry) => entry.value));
+        overlays.push(range("comparison-range-current", arrowEndX, currentHigh, currentLow));
+      }
       const highLabelY = Math.max(top+9,rangeTop-3);
       const lowLabelY = Math.min(height-bottom-1,rangeBottom+10);
       overlays.push(`<text class="weekly-range-label" x="${rangeX+6}" y="${highLabelY}" fill="${colors[high.item.alias] || "#777"}" text-anchor="start">${formatValue(high.value)}</text>${low.item.alias !== high.item.alias ? `<text class="weekly-range-label" x="${rangeX+6}" y="${lowLabelY}" fill="${colors[low.item.alias] || "#777"}" text-anchor="start">${formatValue(low.value)}</text>` : ""}`);
-      overlays.push(`<line class="weekly-average-arrow" x1="${arrowStartX}" y1="${arrowStartY}" x2="${arrowEndX}" y2="${arrowEndY}" stroke="#253c31" stroke-width="1.8" marker-end="url(#${markerId})"><title>Средневзвешенное значение: ${formatValue(comparison.weekAgo.value)} → ${formatValue(comparison.current.value)}</title></line><circle cx="${arrowStartX}" cy="${arrowStartY}" r="3.5" fill="white" stroke="#253c31" stroke-width="1.5"/><circle cx="${arrowEndX}" cy="${arrowEndY}" r="3.5" fill="#253c31"/>`);
+      overlays.push(`<line class="weekly-average-arrow" x1="${arrowStartX}" y1="${arrowStartY}" x2="${arrowEndX}" y2="${arrowEndY}" stroke="${arrowColor}" stroke-width="1.8" marker-end="url(#${markerId})"><title>Средневзвешенное значение: ${formatValue(comparison.weekAgo.value)} → ${formatValue(comparison.current.value)}</title></line><circle cx="${arrowStartX}" cy="${arrowStartY}" r="3.5" fill="white" stroke="${arrowColor}" stroke-width="1.5"/><circle cx="${arrowEndX}" cy="${arrowEndY}" r="3.5" fill="${arrowColor}"/>`);
     }
     if (endpoints.length) {
       const highest = endpoints.reduce((best, current) => current.value > best.value ? current : best);
