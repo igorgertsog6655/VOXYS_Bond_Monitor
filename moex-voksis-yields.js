@@ -1,6 +1,7 @@
 (function (root) {
   const colors = { "МКАОВокс01": "#276b51", "МКАОВокс02": "#d1a029", "МКАОВокс03": "#8b626e", "Воксис-01": "#468b9b", "Воксис-02": "#8b9a52", "Воксис-03": "#cc7054", "Воксис-04": "#6579a4" };
   const hidden = new Set();
+  const manuallySelected = new Set();
   let state;
   function renderChart(items, from, to) {
     const series = items.map((item) => ({ ...item, points: (item.points || []).filter((p) => p.date >= from && p.date <= to && Number.isFinite(p.ytm)) }));
@@ -44,8 +45,19 @@
   legend.addEventListener("change", (event) => {
     const alias = event.target.dataset?.yieldIssue;
     if (!Object.hasOwn(colors, alias)) return;
+    manuallySelected.add(alias);
     if (event.target.checked) hidden.delete(alias); else hidden.add(alias);
     render();
   });
-  root.VoxysYields = { update(items, from, to) { state = { items, from, to }; render(); } };
+  root.VoxysYields = { update(items, from, to) {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    for (const item of items) {
+      if (!manuallySelected.has(item.alias) && item.maturityDate && item.maturityDate.slice(0, 10) <= today) {
+        hidden.add(item.alias);
+      }
+    }
+    state = { items, from, to };
+    render();
+  } };
 })(typeof window === "undefined" ? globalThis : window);
