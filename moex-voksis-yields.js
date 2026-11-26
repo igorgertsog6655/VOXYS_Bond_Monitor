@@ -44,7 +44,7 @@
     const ticks = [];
     for (let v = min; v <= max; v += step) {
       const isPar = price && v === 100;
-      ticks.push(`<line class="${isPar ? "combined-par-line" : "combined-grid-line"}" x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="${isPar ? "#173f2c" : "#e3e8df"}" stroke-width="${isPar ? 2 : 1}"${isPar ? "" : ' stroke-opacity="0.45" stroke-dasharray="3 4"'}/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${price ? v.toFixed(2).replace(".", ",") : v + "%"}</text>`);
+      ticks.push(`<line class="${isPar ? "combined-par-line" : "combined-grid-line"}" x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="${isPar ? "#173f2c" : "#e3e8df"}" stroke-width="${isPar ? 2 : 0.5}"${isPar ? "" : ' stroke-opacity="0.45" stroke-dasharray="3 4"'}/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${price ? v.toFixed(2).replace(".", ",") : v + "%"}</text>`);
     }
     const cursor = new Date(timestamp(from));
     cursor.setUTCDate(1);
@@ -52,7 +52,7 @@
       const date = cursor.toISOString().slice(0, 10);
       const next = new Date(cursor);
       next.setUTCMonth(next.getUTCMonth() + 1);
-      if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider combined-grid-line" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+      if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider combined-grid-line" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`);
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     const lines = series.map((item) => {
@@ -76,8 +76,13 @@
       const arrowStartX = x(comparison.weekAgo.date), arrowStartY = y(comparison.weekAgo.value);
       const arrowEndX = x(comparison.current.date), arrowEndY = y(comparison.current.value);
       const markerId = price ? "weekly-average-arrow-price" : "weekly-average-arrow-yield";
-      const arrowColor = comparison.current.value > comparison.weekAgo.value ? "#27804d"
-        : comparison.current.value < comparison.weekAgo.value ? "#b33948" : "#75857c";
+      const arrowColor = comparison.current.value > comparison.weekAgo.value ? "#00c853"
+        : comparison.current.value < comparison.weekAgo.value ? "#ff1744" : "#75857c";
+      const averageDelta = comparison.current.value - comparison.weekAgo.value;
+      const deltaLabel = "(" + (averageDelta > 0 ? "+" : "") + averageDelta.toFixed(1).replace(".", ",") + " п.п.)";
+      const deltaX = Math.min(width - right - 4, arrowEndX + 8);
+      const deltaAnchor = deltaX >= width - right - 8 ? "end" : "start";
+      labels.push('<text class="weekly-average-delta" x="' + deltaX + '" y="' + (arrowEndY - 7) + '" text-anchor="' + deltaAnchor + '" fill="' + arrowColor + '">' + deltaLabel + '</text>');
       const formatValue = (value) => `${value.toFixed(1).replace(".", ",")}${price ? "" : "%"}`;
       const range = (className, px, highValue, lowValue) => {
         const highY = y(highValue), lowY = y(lowValue);
@@ -145,14 +150,14 @@
     const fmt = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
     let grid = "";
     for (let amount = 0; amount <= axisMax; amount += step) {
-      grid += `<line class="combined-grid-line" x1="${left}" x2="${width-right}" y1="${y(amount)}" y2="${y(amount)}" stroke="#e3e8df" stroke-opacity="0.45" stroke-dasharray="3 4"/><text x="${left-8}" y="${y(amount)+4}" text-anchor="end">${fmt.format(amount/1000000)}</text>`;
+      grid += `<line class="combined-grid-line" x1="${left}" x2="${width-right}" y1="${y(amount)}" y2="${y(amount)}" stroke="#e3e8df" stroke-opacity="0.45" stroke-dasharray="3 4" stroke-width="0.5"/><text x="${left-8}" y="${y(amount)+4}" text-anchor="end">${fmt.format(amount/1000000)}</text>`;
     }
     const cursor = new Date(start);
     cursor.setUTCDate(1);
     while (cursor.getTime() <= end) {
       const next = new Date(cursor);
       next.setUTCMonth(next.getUTCMonth()+1);
-      if (cursor.getTime() >= start) grid += `<line class="combined-grid-line" x1="${x(cursor.getTime())}" x2="${x(cursor.getTime())}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4"/>`;
+      if (cursor.getTime() >= start) grid += `<line class="combined-grid-line" x1="${x(cursor.getTime())}" x2="${x(cursor.getTime())}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4" stroke-width="0.5"/>`;
       const middle = (Math.max(start, cursor.getTime()) + Math.min(end, next.getTime())) / 2;
       const date = cursor.toISOString();
       grid += `<text class="volume-month-label" x="${x(middle)}" y="${height-8}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`;
