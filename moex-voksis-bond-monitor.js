@@ -846,6 +846,7 @@
         x: xForDate(last.date),
         y: getY(getValue(last)),
         value: getValue(last),
+        date: last.date,
         color
       };
     }
@@ -865,8 +866,17 @@
       ctx.fillText(label, x, y);
     }
 
-    labelLastPoint(formatNumber(lastPrice?.value), lastPrice, scale.showYield ? -8 : -10);
-    labelLastPoint(formatPercent(lastYield?.value), lastYield, scale.showPrice ? -22 : -10);
+    const lastLabels = [
+      lastPrice ? { point: lastPrice, label: formatNumber(lastPrice.value) } : null,
+      lastYield ? { point: lastYield, label: formatPercent(lastYield.value) } : null
+    ].filter(Boolean);
+    if (lastLabels.length === 2 && lastLabels[0].point.date === lastLabels[1].point.date) {
+      lastLabels.sort((a, b) => a.point.y - b.point.y);
+      labelLastPoint(lastLabels[0].label, lastLabels[0].point, -8);
+      labelLastPoint(lastLabels[1].label, lastLabels[1].point, 18);
+    } else {
+      lastLabels.forEach((item, index) => labelLastPoint(item.label, item.point, -10 - index * 14));
+    }
 
     ctx.fillStyle = axisColor;
     ctx.font = axisFont;
