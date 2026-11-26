@@ -58,11 +58,14 @@
     const plotH = height - top - bottom;
     const max = Math.max(1, ...days.map(([, amount]) => amount));
     const x = (time) => left + (time - start) / span * (width - left - right);
-    const y = (amount) => top + plotH * (1 - amount / max);
-    const fmt = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+    const rawStep = max / 2;
+    const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+    const step = Math.max(magnitude, Math.ceil(rawStep / magnitude) * magnitude);
+    const axisMax = Math.ceil(max / step) * step;
+    const y = (amount) => top + plotH * (1 - amount / axisMax);
+    const fmt = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
     let grid = "";
-    for (let i = 0; i <= 2; i++) {
-      const amount = max * i / 2;
+    for (let amount = 0; amount <= axisMax; amount += step) {
       grid += `<line x1="${left}" x2="${width-right}" y1="${y(amount)}" y2="${y(amount)}" stroke="#e3e8df"/><text x="${left-8}" y="${y(amount)+4}" text-anchor="end">${fmt.format(amount/1000000)}</text>`;
     }
     const cursor = new Date(start);
@@ -81,7 +84,7 @@
       const center = x(Date.parse(date+"T00:00:00Z"));
       const barLeft = Math.max(left, center-barWidth/2);
       const barRight = Math.min(width-right, center+barWidth/2);
-      return `<rect x="${barLeft}" y="${y(amount)}" width="${Math.max(0,barRight-barLeft)}" height="${plotH*amount/max}" fill="#5d8979"><title>${date.split("-").reverse().join(".")} · ${fmt.format(amount)} ₽</title></rect>`;
+      return `<rect x="${barLeft}" y="${y(amount)}" width="${Math.max(0,barRight-barLeft)}" height="${y(0)-y(amount)}" fill="#5d8979"><title>${date.split("-").reverse().join(".")} · ${fmt.format(amount)} ₽</title></rect>`;
     }).join("");
     const missing = items.some((item) => !(item.points || []).some((p) => p.date >= from && p.date <= to && Number.isFinite(p.turnoverRub)));
     return heading + `<svg class="combined-yields-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Суммарный дневной объём торгов выбранных выпусков">${grid}${bars}</svg>`
