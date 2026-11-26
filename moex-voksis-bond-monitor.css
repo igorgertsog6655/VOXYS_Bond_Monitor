@@ -147,8 +147,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .cashflow-key-hatch { margin-left: 10px; background: repeating-linear-gradient(45deg, #6579a4 0 3px, #e7ebf1 3px 5px); }
 .cashflow-chart { width: 100%; overflow-x: auto; overflow-y: hidden; border: 1px solid var(--line); border-top: 3px solid #dfb532; border-radius: 7px; background: var(--panel); box-shadow: 0 7px 22px rgba(40, 57, 37, .045); }
 .cashflow-svg { display: block; max-width: none; font: 11px "Source Sans Pro", "Segoe UI", Arial, sans-serif; }
-.cashflow-grid line { stroke: #e6ebe4; stroke-dasharray: 3 4; }
-.cashflow-year-divider { stroke: #bac5b9; stroke-width: 1; }
+.cashflow-grid line { stroke: #aeb9b0; stroke-opacity: .45; stroke-dasharray: 3 4; }
+.cashflow-year-divider { stroke: #bac5b9; stroke-opacity: .45; stroke-width: 1; stroke-dasharray: 3 4; }
 .cashflow-grid text, .cashflow-month, .cashflow-axis-title { fill: var(--muted); }
 .cashflow-total { fill: var(--ink); font-size: 12px; font-weight: 700; }
 .cashflow-empty { margin: 0; padding: 45px 20px; color: var(--muted); text-align: center; }
@@ -204,8 +204,8 @@ tbody tr:last-child td { border-bottom: 0; }
 [data-theme="dark"] .issue-total td { background: #2d3b30; border-color: #50634f; }
 [data-theme="dark"] .cashflow-offer:has(input:checked) { border-color: #687d60; }
 [data-theme="dark"] .cashflow-key-hatch { background: repeating-linear-gradient(45deg, #6579a4 0 3px, #39434b 3px 5px); }
-[data-theme="dark"] .cashflow-grid line { stroke: #46524a; }
-[data-theme="dark"] .cashflow-year-divider { stroke: #77847a; }
+[data-theme="dark"] .cashflow-grid line { stroke: #aeb9b0; stroke-opacity: .45; stroke-dasharray: 3 4; }
+[data-theme="dark"] .cashflow-year-divider { stroke: #aeb9b0; stroke-opacity: .45; stroke-dasharray: 3 4; }
 [data-theme="dark"] .payment-calendar-weekday { background: #2d392f; }
 [data-theme="dark"] .payment-calendar-blank, [data-theme="dark"] .payment-calendar-day.is-outside { background: #29332d; }
 [data-theme="dark"] .payment-calendar-day.has-payment { background: #222d26; }

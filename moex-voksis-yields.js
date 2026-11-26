@@ -42,21 +42,24 @@
     const x = (date) => left + (timestamp(date) - start) / span * (width - left - right);
     const y = (value) => top + (max - value) / (max - min) * (height - top - bottom);
     const ticks = [];
-    for (let v = min; v <= max; v += step) ticks.push(`<line x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="${price && v === 100 ? "#173f2c" : "#e3e8df"}" stroke-width="${price && v === 100 ? 2 : 1}"/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${price ? v.toFixed(2).replace(".", ",") : v + "%"}</text>`);
+    for (let v = min; v <= max; v += step) {
+      const isPar = price && v === 100;
+      ticks.push(`<line class="${isPar ? "combined-par-line" : "combined-grid-line"}" x1="${left}" x2="${width-right}" y1="${y(v)}" y2="${y(v)}" stroke="${isPar ? "#173f2c" : "#e3e8df"}" stroke-width="${isPar ? 2 : 1}"${isPar ? "" : ' stroke-opacity="0.45" stroke-dasharray="3 4"'}/><text x="${left-8}" y="${y(v)+4}" text-anchor="end">${price ? v.toFixed(2).replace(".", ",") : v + "%"}</text>`);
+    }
     const cursor = new Date(timestamp(from));
     cursor.setUTCDate(1);
     while (cursor.getTime() <= timestamp(to)) {
       const date = cursor.toISOString().slice(0, 10);
       const next = new Date(cursor);
       next.setUTCMonth(next.getUTCMonth() + 1);
-      if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+      if (cursor.getTime() >= start) ticks.push(`<line class="yield-month-divider combined-grid-line" x1="${x(date)}" x2="${x(date)}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
       cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
     const lines = series.map((item) => {
       const color = colors[item.alias] || "#777";
       const path = item.points.map((p, i) => `${i ? "L" : "M"}${x(p.date)} ${y(p[field])}`).join(" ");
       const points = item.points.map((p) => `<circle cx="${x(p.date)}" cy="${y(p[field])}" r="6" fill="transparent" stroke="transparent"><title>${item.alias} · ${p.date.split("-").reverse().join(".")} · ${p[field].toFixed(2).replace(".", ",")}${price ? "" : "%"}</title></circle>`).join("");
-      return `<g style="--line-color:${color}"><path class="issue-series-line" d="${path}" fill="none" stroke="${color}" stroke-width="4" stroke-opacity="0.58" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>${points}</g>`;
+      return `<g style="--line-color:${color}"><path class="issue-series-line" d="${path}" fill="none" stroke="${color}" stroke-width="4" vector-effect="non-scaling-stroke"/>${points}</g>`;
     }).join("");
     const endpoints = series.map((item) => {
       const point = item.points[item.points.length - 1];
@@ -142,14 +145,14 @@
     const fmt = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
     let grid = "";
     for (let amount = 0; amount <= axisMax; amount += step) {
-      grid += `<line x1="${left}" x2="${width-right}" y1="${y(amount)}" y2="${y(amount)}" stroke="#e3e8df"/><text x="${left-8}" y="${y(amount)+4}" text-anchor="end">${fmt.format(amount/1000000)}</text>`;
+      grid += `<line class="combined-grid-line" x1="${left}" x2="${width-right}" y1="${y(amount)}" y2="${y(amount)}" stroke="#e3e8df" stroke-opacity="0.45" stroke-dasharray="3 4"/><text x="${left-8}" y="${y(amount)+4}" text-anchor="end">${fmt.format(amount/1000000)}</text>`;
     }
     const cursor = new Date(start);
     cursor.setUTCDate(1);
     while (cursor.getTime() <= end) {
       const next = new Date(cursor);
       next.setUTCMonth(next.getUTCMonth()+1);
-      if (cursor.getTime() >= start) grid += `<line x1="${x(cursor.getTime())}" x2="${x(cursor.getTime())}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7"/>`;
+      if (cursor.getTime() >= start) grid += `<line class="combined-grid-line" x1="${x(cursor.getTime())}" x2="${x(cursor.getTime())}" y1="${top}" y2="${height-bottom}" stroke="#d4ddd7" stroke-opacity="0.45" stroke-dasharray="3 4"/>`;
       const middle = (Math.max(start, cursor.getTime()) + Math.min(end, next.getTime())) / 2;
       const date = cursor.toISOString();
       grid += `<text class="volume-month-label" x="${x(middle)}" y="${height-8}" text-anchor="middle">${date.slice(5,7)}/${date.slice(2,4)}</text>`;

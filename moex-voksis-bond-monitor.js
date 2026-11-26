@@ -687,7 +687,11 @@
     for (let i = 0; i <= 2; i++) {
       const y = 12 + plotH * (1 - i / 2);
       ctx.strokeStyle = "#e3e8df";
+      ctx.globalAlpha = 0.45;
+      ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width - right, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
       ctx.fillStyle = "#6d786f";
       ctx.fillText(formatNumber(max * i / 2 / 1000000), left, y - 3);
     }
@@ -776,6 +780,7 @@
         const y = yForPrice(value);
         const isPar = value === 100;
         ctx.strokeStyle = isPar ? "#173f2c" : "#e3e8df";
+        ctx.globalAlpha = isPar ? 1 : 0.45;
         ctx.lineWidth = isPar ? 2 : 1;
         ctx.setLineDash(isPar ? [] : [3, 4]);
         ctx.beginPath();
@@ -783,6 +788,7 @@
         ctx.lineTo(width - pad.right, y);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = axisColor;
         ctx.fillText(formatNumber(value), pad.left - 8, y);
       }
@@ -793,6 +799,7 @@
         if (index % yieldTickInterval !== 0) continue;
         const y = yForYield(value);
         ctx.strokeStyle = "#e3e8df";
+        ctx.globalAlpha = 0.45;
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 4]);
         ctx.beginPath();
@@ -801,6 +808,7 @@
         ctx.stroke();
       }
       ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
     }
 
     if (scale.showYield) {
@@ -813,6 +821,7 @@
     }
 
     ctx.strokeStyle = "#ebeee7";
+    ctx.globalAlpha = 0.45;
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 5]);
     for (const date of scale.monthTicks) {
@@ -823,6 +832,7 @@
       ctx.stroke();
     }
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     function drawLine(items, getValue, getY, color, widthValue) {
       const valid = items.filter((point) => Number.isFinite(getValue(point)));
