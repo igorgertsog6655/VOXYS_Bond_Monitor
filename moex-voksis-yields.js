@@ -3,9 +3,9 @@
   const hidden = new Set();
   const manuallySelected = new Set();
   let state;
-  function weeklyComparison(items, to, field) {
+  function weeklyComparison(items, from, to, field) {
     const records = items.map((item) => {
-      const points = (item.points || []).filter((point) => point.date <= to && Number.isFinite(point[field]))
+      const points = (item.points || []).filter((point) => point.date >= from && point.date <= to && Number.isFinite(point[field]))
         .sort((a, b) => a.date.localeCompare(b.date));
       const current = points[points.length - 1];
       if (!current) return null;
@@ -31,7 +31,13 @@
   function renderLineChart(items, from, to, price = false) {
     const field = price ? "close" : "ytm";
     const series = items.map((item) => ({ ...item, points: (item.points || []).filter((p) => p.date >= from && p.date <= to && Number.isFinite(p[field])) }));
-    const values = series.flatMap((item) => item.points.map((p) => p[field]));
+    const comparison = weeklyComparison(items, from, to, field);
+    const values = [
+      ...series.flatMap((item) => item.points.map((p) => p[field])),
+      ...comparison.weekValues.map((entry) => entry.value),
+      ...(comparison.current ? [comparison.current.value] : []),
+      ...(comparison.weekAgo ? [comparison.weekAgo.value] : [])
+    ];
     if (!values.length) return '<p class="cashflow-empty">Нет данных для выбранных выпусков.</p>';
     const step = price ? 1 : 2;
     const min = Math.floor(Math.min(...values, ...(price ? [100] : [])) / step) * step;
@@ -67,7 +73,7 @@
     }).filter(Boolean);
     const labels = [];
     const overlays = [];
-    const comparison = weeklyComparison(items, to, field);
+
     if (comparison.weekAgo && comparison.current && comparison.weekAgo.date >= from) {
       const low = comparison.weekValues.reduce((best, current) => current.value < best.value ? current : best);
       const high = comparison.weekValues.reduce((best, current) => current.value > best.value ? current : best);
