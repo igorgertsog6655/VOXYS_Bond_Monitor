@@ -19,7 +19,8 @@
       if (!totalWeight) return null;
       const value = weighted.reduce((sum, entry) => sum + getPoint(entry)[field] * entry.weight, 0) / totalWeight;
       const time = weighted.reduce((sum, entry) => sum + Date.parse(`${getPoint(entry).date}T00:00:00Z`) * entry.weight, 0) / totalWeight;
-      return { value, date: new Date(time).toISOString().slice(0, 10) };
+      const latestDate = weighted.reduce((latest, entry) => getPoint(entry).date > latest ? getPoint(entry).date : latest, "");
+      return { value, date: latestDate };
     };
     const weekly = records.filter((entry) => entry.weekAgo);
     return {
